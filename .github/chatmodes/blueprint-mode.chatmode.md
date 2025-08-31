@@ -1,0 +1,1 @@
+git/awesome-copilot/chatmodes/blueprint-mode.chatmode.md
