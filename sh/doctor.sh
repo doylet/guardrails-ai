@@ -1,110 +1,253 @@
-Great question. You’ve got a real mix across C/Node/Python/Ruby/Rust projects (e.g., `Zero-Latency`, `ai_deck_gen`, `roam-research-mcp`, Rails-style trees). A consistent scheme will save you from import/path weirdnessespecially when switching OSes or packaging.&#x20;
+#!/bin/bash
+# doctor.sh: Enforces naming policy for repos, packages, and files.
+# See doctor.md for full policy details.
 
-# A simple, durable policy
+set -e
 
-## Layer 1: Repos & top-level folders
+# Color codes for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
 
-* **kebab-case** only (all lowercase, dashes): `zero-latency`, `ai-deck-gen`, `docsearch`.
-* No spaces or uppercase; ASCII only.
-* Reason: works cleanly in URLs, npm, Cargo, Docker tags, CI paths.
+# Helper functions for output
+print_header() {
+    echo -e "${CYAN}========================================${NC}"
+    echo -e "${CYAN}  BMAD Naming Policy Doctor v1.0${NC}"
+    echo -e "${CYAN}========================================${NC}"
+}
 
-## Layer 2: Language-specific inside each repo
+print_pass() {
+    echo -e "${GREEN}[PASS]${NC} $1"
+}
 
-### Python
+print_fail() {
+    echo -e "${RED}[FAIL]${NC} $1"
+}
 
-* **Package & module dirs/files:** `snake_case` (`ai_deck_gen/`, `vector_store.py`)
-* **Distribution/project name (`pyproject.toml [project].name`):** kebab-case (`ai-deck-gen`)
-* **Classes:** `CapWords` (`VectorStore`)
-* **Constants:** `UPPER_SNAKE`
-* Why: imports break on hyphens; PyPI package names typically kebab/normalized.
+print_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
 
-### Node/TypeScript
+print_warning() {
+    echo -e "${YELLOW}[WARN]${NC} $1"
+}
 
-* **package.json "name":** kebab-case (`roam-research-mcp`)
-* **Folders/files:** kebab-case by default (`editor-collab/server`); **React components** may use `PascalCase.tsx`
-* **Classes:** `PascalCase`
-* **Constants:** `SCREAMING_SNAKE`
+# Start the doctor check
+print_header
 
-### Rust
+# Detect submodule roots
+print_info "Scanning repository structure..."
+SUBMODULES=""
+if [ -f .gitmodules ]; then
+  SUBMODULES=$(git config --file .gitmodules --get-regexp path | awk '{print $2}')
+  print_info "Found .gitmodules with configured submodules"
+fi
+# Also detect submodules without .gitmodules (corrupted state)
+SUBMODULES_FROM_STAGE=$(git ls-files --stage | grep "^160000" | awk '{print $4}')
+if [ -n "$SUBMODULES_FROM_STAGE" ]; then
+  SUBMODULES="$SUBMODULES $SUBMODULES_FROM_STAGE"
+  if [ ! -f .gitmodules ]; then
+    print_warning "Found submodules without .gitmodules file (corrupted state)"
+  fi
+fi
 
-* **Crate/package names (Cargo.toml):** kebab-case (`zero-latency-core`)
-* **Module files/dirs:** `snake_case.rs` (`vector_search.rs`)
-* **Types/traits/enums:** `PascalCase` (`VectorSearch`, `SearchError`)
-* **Constants/features:** `SCREAMING_SNAKE` / feature flags `snake_case`
-* Note: Rust maps crate `zero-latency` `zero_latency` in paths automatically.
+if [ -n "$SUBMODULES" ]; then
+  print_info "Detected submodules: $(echo $SUBMODULES | tr ' ' ', ')"
+fi
 
-### C
 
-* **Dirs/files:** `snake_case` (`tcp_server/src`, `request_parser.c`, `request_parser.h`)
-* **Macros:** `SCREAMING_SNAKE`
-* **lib names:** `libname.so`/`libname.a`
 
-### Ruby / Rails
 
-* **Gem name:** kebab or snake are both common; prefer **kebab** externally (`print-system`) and **snake** in require paths (`require "print_system"`).
-* **Rails app folder:** `snake_case`
-* **Classes/Modules:** `CamelCase`
+# Parse arguments
 
-## Cross-cutting rules
+print_info "Parsing command line options..."
+DRY_RUN=0
+EXTRA_IGNORE_PATTERNS=()
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --dry-run)
+      DRY_RUN=1
+      print_info "Dry-run mode enabled - no changes will be made"
+      shift
+      ;;
+    --extra-ignore)
+      if [ -n "$2" ]; then
+        EXTRA_IGNORE_PATTERNS+=("$2")
+        print_info "Added extra ignore pattern: $2"
+        shift 2
+      else
+        print_fail "--extra-ignore requires a pattern or file argument"
+        exit 2
+      fi
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
 
-* Pick **one** separator per layer (kebab for repos/packages; snake for importable module/file names).
-* Avoid mixing `-` and `_` at the same layer.
-* Never rely on case for meaning (macOS often case-insensitive; Linux isn’t).
+echo ""
+print_info "Building ignore patterns from .gitignore and git configuration..."
 
-# Rename mapping (practical examples)
+# Build list of ignored files/dirs (and treat as prefixes)
+IGNORED=$(git ls-files --others --ignored --exclude-standard)
+IGNORED_PREFIXES=""
+for ignore in $IGNORED; do
+  # If it's a directory, add trailing slash for prefix match
+  if [ -d "$ignore" ]; then
+    IGNORED_PREFIXES+="$ignore/\n"
+  else
+    IGNORED_PREFIXES+="$ignore\n"
+  fi
+done
 
-* **Repo branding vs code imports**
+# Add extra ignore patterns if provided (files or direct patterns)
+EXTRA_IGNORED=""
+for pattern in "${EXTRA_IGNORE_PATTERNS[@]}"; do
+  if [ -f "$pattern" ]; then
+    print_info "Loading ignore patterns from file: $pattern"
+    while IFS= read -r filepattern; do
+      [ -z "$filepattern" ] && continue
+      EXTRA_IGNORED+="$(find . -path ./.git -prune -o -path "$filepattern" -print)\n"
+    done < "$pattern"
+  else
+    EXTRA_IGNORED+="$(find . -path ./.git -prune -o -path "$pattern" -print)\n"
+  fi
+done
 
-* Repo: `zero-latency`
-* Rust crate: `zero-latency-core` import path `zero_latency_core`
-* Python project: `ai-deck-gen` (dist) import `ai_deck_gen`
-* Your current examples:
+echo ""
+print_info "Phase 1: Checking all paths for lowercase and underscore/dash compliance..."
 
-* `Zero-Latency` **rename repo** to `zero-latency`; keep Rust crates kebab, modules snake.
-* `ai_deck_gen` repo `ai-deck-gen`; Python package dir stays `ai_deck_gen`.
+# Fail if any path (except .git and .gitignored) contains uppercase or spaces
 
-# Migration checklist (fast & safe)
+# Fail if any path (except .git and .gitignored) contains uppercase or spaces
 
-1. **Decide the canonical forms**
+violations=""
+violation_count=0
+total_paths=0
 
-* Repos: kebab
-* Python packages/modules: snake
-* Node packages / Rust crates: kebab (files snake for Rust modules)
-2. **Search & fix hardcoded paths**
+find . -type f -o -type d > .doctor_find_tmp
+total_paths=$(wc -l < .doctor_find_tmp)
+print_info "Examining $total_paths paths..."
 
-   ```bash
-   rg -nS --hidden --glob '!.git' '(Zero[-_]Latency|ai[_-]deck[_-]gen|[A-Z].*[A-Z])'
-   ```
-3. **Rename with Git to keep history**
+while IFS= read -r path; do
+  skip=0
+  
+  # Skip submodules first to avoid git check-ignore fatal errors
+  for sub in $SUBMODULES; do
+    if [[ "$path" == "./$sub"* ]]; then
+      skip=1
+      break
+    fi
+  done
+  if [ $skip -eq 1 ]; then
+    continue
+  fi
+  
+  # Skip .git directories
+  if [[ "$path" == ./.git* ]]; then
+    skip=1
+  fi
+  if [ $skip -eq 1 ]; then
+    continue
+  fi
+  
+  # Use git check-ignore for .gitignore and .git/info/exclude
+  if git check-ignore -q "$path" 2>/dev/null; then
+    skip=1
+  fi
+  if [ $skip -eq 1 ]; then
+    continue
+  fi
+  
+  # Extra ignore patterns (manual, not git-aware)
+  for ignore in $EXTRA_IGNORED; do
+    if [[ "$path" == "$ignore"* ]]; then
+      skip=1
+      break
+    fi
+  done
+  if [ $skip -eq 1 ]; then
+    continue
+  fi
+  
+  if [[ "$path" =~ [A-Z] ]] || [[ "$path" =~ [[:space:]] ]]; then
+    violations+="$path\n"
+    ((violation_count++))
+  fi
+done < .doctor_find_tmp
+rm -f .doctor_find_tmp
 
-   ```bash
-   git mv Zero-Latency zero-latency
-   ```
-4. **Update manifests**
+if [ -n "$violations" ]; then
+  print_fail "Found $violation_count path naming violations:"
+  echo ""
+  echo -e "${RED}Violations (must be lowercase with dashes/underscores only):${NC}"
+  echo -e "$violations" | head -20
+  if [ $violation_count -gt 20 ]; then
+    print_warning "Showing first 20 of $violation_count violations. Fix these and run again."
+  fi
+  echo ""
+  print_info "Fix these paths by renaming to lowercase and using dashes or underscores"
+  if [ $DRY_RUN -eq 0 ]; then
+    exit 1
+  fi
+else
+  print_pass "All paths are lowercase and use only dashes/underscores"
+fi
 
-* Python: `[project].name = "ai-deck-gen"` (imports unchanged)
-* Node: `"name": "roam-research-mcp"`
-* Rust: `package.name = "zero-latency-core"` (Cargo updates lock/metadata)
-5. **CI & scripts**
+echo ""
+print_info "Phase 2: Checking top-level entries for kebab-case compliance..."
 
-* Fix `working-directory`, Docker contexts, launchd/systemd unit paths.
-6. **Guardrails in CI** (fails on new violations)
+# Check for kebab-case at repo root (top-level folders/files)
+fail=0
+entries_checked=0
+# Check for kebab-case at repo root (top-level folders/files)
+fail=0
+entries_checked=0
+for entry in $(ls -1 | grep -vE '^(\.|\.git)$'); do
+  ((entries_checked++))
+  if [[ "$entry" =~ [A-Z_] ]] || [[ "$entry" =~ [[:space:]] ]]; then
+    print_fail "Top-level entry '$entry' is not kebab-case"
+    fail=1
+  fi
+  if [[ "$entry" =~ _ ]]; then
+    print_fail "Top-level entry '$entry' uses underscores; use dashes (kebab-case)"
+    fail=1
+  fi
+  if [[ "$entry" =~ [A-Z] ]]; then
+    print_fail "Top-level entry '$entry' uses uppercase; use lowercase only"
+    fail=1
+  fi
+  if [[ "$entry" =~ [[:space:]] ]]; then
+    print_fail "Top-level entry '$entry' contains spaces; use dashes"
+    fail=1
+  fi
+done
 
-   ```bash
-   # disallow uppercase or spaces in paths (except .git)
-   if find . -path ./.git -prune -o -regex '.*[[:upper:][:space:]].*' -print | grep -q .; then
-     echo "Path names must be lowercase and dash_or_underscore only"; exit 1; fi
-   ```
+print_info "Checked $entries_checked top-level entries"
 
-# One-page team standard (drop-in)
+if [ $fail -eq 1 ]; then
+  echo ""
+  print_info "Top-level entries must use kebab-case (lowercase with dashes only)"
+  if [ $DRY_RUN -eq 0 ]; then
+    exit 1
+  fi
+else
+  print_pass "All top-level entries are kebab-case"
+fi
 
-* **Repos/Packages:** kebab-case
-* **Importable code (modules/files):** snake\_case
-* **Types/classes:** PascalCase
-* **Constants/macros:** SCREAMING\_SNAKE
-* **React components:** PascalCase files allowed
-* **No uppercase or spaces in paths**
-* **Python:** dist name kebab, import name snake
-* **Rust:** crate kebab, module files snake (Cargo maps automatically)
+echo ""
+if [ $DRY_RUN -eq 1 ]; then
+  print_info "Dry-run completed - no changes were made"
+else
+  print_pass "All naming policy checks passed!"
+fi
+print_info "For detailed policy information, see doctor.md"
 
-If you want, I can produce a quick “rename plan” for a specific repo (commands + manifest diffs) and a tiny pre-commit hook to enforce this going forward.
+# Optionally: add more checks for language-specific conventions here
+# (e.g., Python package dirs, Node package.json name, etc.)
+
+exit 0
