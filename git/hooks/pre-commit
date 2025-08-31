@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# pre-commit: enforce path naming + quick repo health
+set -euo pipefail
+
+# Gather staged files (added/copied/modified/renamed)
+mapfile -t STAGED < <(git diff --cached --name-only --diff-filter=ACMR | sed 's#^./##')
+
+if [[ ${#STAGED[@]} -eq 0 ]]; then
+exit 0
+fi
+
+fail=0
+
+is_whitelisted() {
+# Allow common top-level docs, CHANGELOG, etc.
+case "$1" in
+README|README.*|LICENSE|LICENSE.*|CHANGELOG|CHANGELOG.*|CONTRIBUTING|CONTRIBUTING.*|CODE_OF_CONDUCT*|SECURITY* )
+return 0;;
+esac
+return 1
+}
+
+for p in "${STAGED[@]}"; do
+# Skip deletions / removed files automatically handled by diff-filter
+# Skip .git contents
+[[ "$p" == .git/* ]] && continue
+
+base="$(basename "$p")"
+# Permit standard uppercase doc names at repo root only
+if [[ "$p" != */* ]] && is_whitelisted "$base"; then
+continue
+fi
+
+# No spaces
+if [[ "$p" == *" "* ]]; then
+echo " Path contains spaces: $p"
+fail=1
+continue
+fi
+
+# No uppercase in path
+lower="$(printf '%s' "$p" | tr '[:upper:]' '[:lower:]')"
+if [[ "$p" != "$lower" ]]; then
+echo " Path contains uppercase characters: $p"
+fail=1
+continue
+fi
+done
+
+# Optional: run quick doctor if available (fast checks on staged set)
+if [[ $fail -eq 0 && -x ./scripts/doctor.sh ]]; then
+if ! ./scripts/doctor.sh --quick; then
+echo " doctor checks failed"
+fail=1
+fi
+fi
+
+if [[ $fail -ne 0 ]]; then
+cat <<'HINT'
+
+Hints:
+- Use kebab-case for repo/package directories: e.g., zero-latency
+- Use snake_case for importable module file names: e.g., vector_search.rs / vector_store.py
+- Avoid spaces and uppercase in paths. Example fix:
+git mv "Some Dir/File Name.ext" some-dir/file-name.ext
+HINT
+exit 1
+fi
+
+exit 0
