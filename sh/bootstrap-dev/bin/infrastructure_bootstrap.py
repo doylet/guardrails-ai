@@ -318,9 +318,84 @@ class InfrastructureBootstrap:
             print(f"Error: {e}")
             return False
 
+    def _customize_precommit_config(self):
+        """Customize .pre-commit-config.yaml based on guardrails.yaml settings"""
+        guardrails_path = self.target_dir / ".ai" / "guardrails.yaml"
+        precommit_path = self.target_dir / ".pre-commit-config.yaml"
+        
+        if not guardrails_path.exists() or not precommit_path.exists():
+            return
+        
+        try:
+            # Load guardrails config
+            with open(guardrails_path, 'r') as f:
+                guardrails_config = yaml.safe_load(f) or {}
+            
+            # Load current pre-commit config
+            with open(precommit_path, 'r') as f:
+                precommit_config = yaml.safe_load(f) or {}
+            
+            # Check if there's a precommit configuration section
+            precommit_settings = guardrails_config.get('precommit', {})
+            disabled_hooks = precommit_settings.get('disabled_hooks', [])
+            disabled_languages = precommit_settings.get('disabled_languages', [])
+            
+            if not disabled_hooks and not disabled_languages:
+                return  # Nothing to customize
+            
+            # Process repositories and hooks
+            updated = False
+            for repo in precommit_config.get('repos', []):
+                if repo.get('repo') == 'local':
+                    # Filter out disabled hooks
+                    original_hooks = repo.get('hooks', [])
+                    filtered_hooks = []
+                    
+                    for hook in original_hooks:
+                        hook_id = hook.get('id', '')
+                        hook_name = hook.get('name', '')
+                        hook_entry = hook.get('entry', '')
+                        
+                        # Check if hook should be disabled
+                        should_disable = False
+                        
+                        # Disable by hook ID
+                        if hook_id in disabled_hooks:
+                            should_disable = True
+                            print(f"  Disabling pre-commit hook: {hook_id}")
+                        
+                        # Disable by language (check if hook name, ID, or entry contains language)
+                        for lang in disabled_languages:
+                            lang_lower = lang.lower()
+                            if (lang_lower in hook_name.lower() or 
+                                lang_lower in hook_id.lower() or
+                                lang_lower in hook_entry.lower()):
+                                should_disable = True
+                                print(f"  Disabling {lang} hook: {hook_id} ({hook_name})")
+                                break
+                        
+                        if not should_disable:
+                            filtered_hooks.append(hook)
+                        else:
+                            updated = True
+                    
+                    repo['hooks'] = filtered_hooks
+            
+            # Save updated config if changes were made
+            if updated:
+                with open(precommit_path, 'w') as f:
+                    yaml.dump(precommit_config, f, default_flow_style=False, sort_keys=False)
+                print(f"  Customized .pre-commit-config.yaml based on guardrails settings")
+            
+        except Exception as e:
+            print(f"Warning: Could not customize pre-commit config: {e}")
+
     def _install_precommit_hooks(self):
         """Install pre-commit hooks like the old unified script did"""
         try:
+            # First customize the config based on guardrails.yaml settings
+            self._customize_precommit_config()
+            
             # Install pre-commit if not already installed
             print("Installing pre-commit hooks...")
             subprocess.run([
@@ -1114,6 +1189,9 @@ def main():
     subparsers.add_parser('list-profiles', help='List available profiles')
     subparsers.add_parser('show-state', help='Show current installation state')
 
+    # Pre-commit configuration
+    subparsers.add_parser('configure-precommit', help='Reconfigure pre-commit hooks based on guardrails.yaml settings')
+
     # Discover what files would be installed
     discover_parser = subparsers.add_parser('discover', help='Show what files would be installed')
     discover_parser.add_argument('component', help='Component to analyze')
@@ -1166,6 +1244,10 @@ def main():
             bootstrap.list_all_profiles()
         elif args.command == 'show-state':
             bootstrap.show_state()
+        elif args.command == 'configure-precommit':
+            print("🔧 Reconfiguring pre-commit hooks...")
+            bootstrap._customize_precommit_config()
+            print("✅ Pre-commit configuration updated")
         elif args.command == 'discover':
             bootstrap.list_discovered_files(args.component)
         else:

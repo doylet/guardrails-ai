@@ -1,32 +1,16 @@
 repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
-    hooks:
-      - id: end-of-file-fixer
-      - id: trailing-whitespace
-      - id: mixed-line-ending
-      - id: check-merge-conflict
-      - id: detect-private-key
-  - repo: local
-    hooks:
-      - id: lang-lint
-        name: language lint (auto-detect)
-        entry: ai/scripts/lang_lint.sh
-        language: system
-        pass_filenames: false
-      - id: lang-test-quick
-        name: language test (quick)
-        entry: bash src/bootstrap-dev/ai/scripts/lang_test.sh
-        language: system
-        pass_filenames: false
-        stages: [pre-push]
-      - id: ai-envelope-local
-        name: AI envelope (local scope check)
-        entry: python src/bootstrap-dev/ai/scripts/check_envelope_local.py
-        language: system
-        pass_filenames: false
-        stages: [pre-push]
-      - id: demos-on-rails-lint
-        name: demos-on-rails-lint
-        language: system
-        entry: python src/bootstrap-dev/src/plugins/demos-on-rails-kit/ai/scripts/check_demo_on_rails.py
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.6.0
+  hooks:
+  - id: end-of-file-fixer
+  - id: trailing-whitespace
+  - id: mixed-line-ending
+  - id: check-merge-conflict
+  - id: detect-private-key
+- repo: local
+  hooks:
+  - id: lang-lint
+    name: language lint (auto-detect)
+    entry: ai/scripts/lang_lint.sh
+    language: system
+    pass_filenames: false

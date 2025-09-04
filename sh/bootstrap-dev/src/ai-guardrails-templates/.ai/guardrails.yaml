@@ -20,3 +20,10 @@ generic:
   shell: "shopt -s globstar nullglob; (command -v shellcheck >/dev/null && shellcheck **/*.sh) || echo 'shellcheck not found'"
   docker: "shopt -s globstar nullglob; (command -v hadolint >/dev/null && hadolint **/Dockerfile* || echo 'hadolint not found')"
   markdown: "(command -v markdownlint >/dev/null && markdownlint . || echo 'markdownlint not found')"
+
+# Pre-commit hook configuration (optional)
+# Uncomment and customize the section below to disable specific language packs
+# Example: disable Python linting in a Rust-only project
+# precommit:
+#   disabled_languages: ["python", "node", "java"]  # Disable hooks containing these languages
+#   disabled_hooks: ["lang-test-quick"]             # Disable specific hook IDs
