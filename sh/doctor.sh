@@ -135,7 +135,7 @@ print_info "Examining $total_paths paths..."
 
 while IFS= read -r path; do
   skip=0
-  
+
   # Skip submodules first to avoid git check-ignore fatal errors
   for sub in $SUBMODULES; do
     if [[ "$path" == "./$sub"* ]]; then
@@ -146,7 +146,7 @@ while IFS= read -r path; do
   if [ $skip -eq 1 ]; then
     continue
   fi
-  
+
   # Skip .git directories
   if [[ "$path" == ./.git* ]]; then
     skip=1
@@ -154,7 +154,7 @@ while IFS= read -r path; do
   if [ $skip -eq 1 ]; then
     continue
   fi
-  
+
   # Use git check-ignore for .gitignore and .git/info/exclude
   if git check-ignore -q "$path" 2>/dev/null; then
     skip=1
@@ -162,7 +162,7 @@ while IFS= read -r path; do
   if [ $skip -eq 1 ]; then
     continue
   fi
-  
+
   # Extra ignore patterns (manual, not git-aware)
   for ignore in $EXTRA_IGNORED; do
     if [[ "$path" == "$ignore"* ]]; then
@@ -173,7 +173,7 @@ while IFS= read -r path; do
   if [ $skip -eq 1 ]; then
     continue
   fi
-  
+
   if [[ "$path" =~ [A-Z] ]] || [[ "$path" =~ [[:space:]] ]]; then
     violations+="$path\n"
     ((violation_count++))

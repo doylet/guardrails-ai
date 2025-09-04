@@ -1,0 +1,34 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: mixed-line-ending
+      - id: check-merge-conflict
+      - id: detect-private-key
+  - repo: local
+    hooks:
+      - id: lang-lint
+        name: language lint (auto-detect)
+        entry: ai/scripts/lang_lint.sh
+        language: system
+        pass_filenames: false
+      - id: lang-test-quick
+        name: language test (quick)
+        entry: ai/scripts/lang_test.sh
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+      - id: ai-envelope-local
+        name: AI envelope (local scope check)
+        entry: python ai/scripts/check_envelope_local.py
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+      - id: ai-envelope-updated
+        name: AI envelope must be updated (newer than last commit)
+        entry: bash -c "if [[ -f .ai/envelope.json ]]; then if [[ .ai/envelope.json -ot .git/logs/HEAD ]]; then echo \"::error::.ai/envelope.json is older than last commit. Update it to reflect your changes.\"; exit 1; fi; fi"
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
