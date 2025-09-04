@@ -5,41 +5,41 @@ version: "1.0.0"
 name: "ai-guardrails-installation"
 
 # File discovery patterns instead of hardcoded lists
-file_patterns:
+components:
   core:
     description: "Core AI guardrails configuration"
-    patterns:
+    file_patterns:
       - ".ai/*.yaml"
       - ".ai/*.json"
-    
+
   schemas:
     description: "JSON schemas for validation"
-    patterns:
+    file_patterns:
       - "ai/schemas/*.json"
-    
+
   scripts:
     description: "All automation scripts"
-    patterns:
+    file_patterns:
       - "ai/scripts/*.py"
       - "ai/scripts/*.sh"
     post_install:
       - "chmod +x ai/scripts/*.py ai/scripts/*.sh"
-    
+
   github:
     description: "GitHub integration files"
-    patterns:
-      - "templates/.github/**/*"
+    file_patterns:
+      - ".github/**/*"
     target_prefix: ""  # Remove 'templates/' prefix when installing
-    
+
   precommit:
     description: "Pre-commit configuration"
-    patterns:
+    file_patterns:
       - ".pre-commit-config.yaml"
-    
+
   docs:
-    description: "All documentation templates" 
-    patterns:
-      - "templates/docs/**/*.md"
+    description: "All documentation templates"
+    file_patterns:
+      - "docs/**/*"
       - "ai/*.md"  # capabilities.md etc
     target_prefix: ""  # Remove 'templates/' prefix when installing
 
@@ -48,11 +48,11 @@ profiles:
   minimal:
     description: "Minimal installation - core only"
     components: ["core", "schemas"]
-    
+
   standard:
     description: "Standard installation for most projects"
     components: ["core", "schemas", "scripts", "precommit", "docs"]
-    
+
   full:
     description: "Full installation with GitHub integration"
     components: ["core", "schemas", "scripts", "github", "precommit", "docs"]
@@ -68,6 +68,12 @@ environment_detection:
 
 # Global settings
 settings:
+  # Template repository configuration
+  template_repository: "ai-guardrails-templates"  # Relative to manifest directory (src/)
+
+  # Plugin repository configuration
+  plugins_directory: "plugins"  # Relative to manifest directory (src/)
+
   auto_create_directories: true
   preserve_existing: true  # Don't overwrite without --force
   validate_before_install: true

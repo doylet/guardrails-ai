@@ -1,0 +1,10 @@
+#!/bin/bash
+# AI Guardrails Bootstrap - Top-level installer
+# Delegates to bin/install.sh
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+echo "🚀 Running AI Guardrails Bootstrap installer..."
+exec "$SCRIPT_DIR/bin/install.sh" "$@"

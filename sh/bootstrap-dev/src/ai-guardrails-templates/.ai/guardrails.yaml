@@ -20,18 +20,3 @@ generic:
   shell: "shopt -s globstar nullglob; (command -v shellcheck >/dev/null && shellcheck **/*.sh) || echo 'shellcheck not found'"
   docker: "shopt -s globstar nullglob; (command -v hadolint >/dev/null && hadolint **/Dockerfile* || echo 'hadolint not found')"
   markdown: "(command -v markdownlint >/dev/null && markdownlint . || echo 'markdownlint not found')"
-
-demos_on_rails:
-  description: Demos must use production interfaces (CLI/module); no internal imports.
-  forbidden_imports:
-    - from src.ai_deck_gen.engine
-    - from ai_deck_gen.engine
-    - import src.ai_deck_gen.engine
-  allowed_entrypoints:
-    - deckgen build
-    - python -m ai_deck_gen.cli
-  required_artifacts:
-    - demo_scenarios/*.yaml
-    - tools/demo_harness.py
-  ci_checks:
-    - python scripts/check_demo_on_rails.py

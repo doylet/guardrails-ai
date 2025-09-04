@@ -1,0 +1,12 @@
+#!/bin/bash
+# AI Guardrails Bootstrap - Convenient wrapper script
+# Usage: ./ai-guardrails <command> [args...]
+
+set -euo pipefail
+
+# Get the directory where the actual script is located (follow symlinks)
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || realpath "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+
+# Execute the Python script with all arguments
+exec "$SCRIPT_DIR/infrastructure_bootstrap.py" "$@"

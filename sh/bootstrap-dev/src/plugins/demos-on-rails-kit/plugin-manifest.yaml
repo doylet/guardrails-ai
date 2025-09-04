@@ -1,0 +1,65 @@
+# AI Guardrails Bootstrap - Plugin Manifest
+# Plugin: Demos-on-Rails Kit
+# Description: Demo harness and validation for AI Guardrails compliance
+
+plugin:
+  name: "demos-on-rails-kit"
+  version: "1.0.0"
+  description: "Demo harness ensuring production interface compliance"
+  author: "AI Guardrails Team"
+
+  # Plugin dependencies (other plugins or base components)
+  dependencies:
+    - "core"
+    - "scripts"
+
+  # Plugin-specific environment detection
+  environment:
+    detects: ["python", "yaml"]
+    requires: ["python3"]
+
+# Plugin file patterns (following same structure as main manifest)
+components:
+  demo-harness:
+    description: "Demo execution and validation harness"
+    file_patterns:
+      - "ai/tools/**/*.py"
+      - "ai/demo_scenarios/**/*.yaml"
+      - "docs/DEMO_GUIDE.md"
+
+  demo-scripts:
+    description: "Demo validation scripts"
+    file_patterns:
+      - "ai/scripts/**/*.py"
+
+  demo-workflows:
+    description: "Demo CI/CD workflows"
+    file_patterns:
+      - ".github/workflows/**/*.yml"
+
+  demo-config:
+    description: "Demo-specific AI guardrails configuration"
+    file_patterns:
+      - ".ai/**/*.yaml"
+
+  demo-docs:
+    description: "Demo integration documentation"
+    file_patterns:
+      - "docs/**/*.md"
+
+# Plugin profiles (extend base profiles)
+profiles:
+  demo-basic:
+    description: "Basic demo harness"
+    components: ["demo-harness", "demo-scripts"]
+
+  demo-full:
+    description: "Complete demo environment with CI/CD"
+    components: ["demo-harness", "demo-scripts", "demo-workflows", "demo-config", "demo-docs"]
+
+# Post-install hooks (simple shell commands)
+hooks:
+  post_install:
+    - "echo 'Demos-on-Rails plugin installed!'"
+    - "echo 'Run: python ai/plugins/demos-on-rails-kit/tools/demo_harness.py --help'"
+    - "echo 'See: docs/dor/DEMO_GUIDE.md for usage'"

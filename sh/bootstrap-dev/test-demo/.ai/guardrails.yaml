@@ -1,0 +1,78 @@
+python:
+  lint: ruff check .
+  type: mypy .
+  test: pytest -q
+node:
+  lint: npx -y eslint . || npx -y @biomejs/biome check .
+  type: npx -y tsc --noEmit
+  test: npm test --silent || pnpm -s test || yarn -s test
+go:
+  lint: golangci-lint run || (go vet ./... && echo 'fallback go vet ok')
+  test: go test ./...
+rust:
+  lint: cargo clippy --no-deps -q -D warnings || echo 'clippy not installed'
+  test: cargo test --quiet
+java:
+  test: mvn -q -DskipTests=false test || ./gradlew test
+dotnet:
+  test: dotnet test --nologo --verbosity quiet
+generic:
+  shell: shopt -s globstar nullglob; (command -v shellcheck >/dev/null && shellcheck
+    **/*.sh) || echo 'shellcheck not found'
+  docker: shopt -s globstar nullglob; (command -v hadolint >/dev/null && hadolint
+    **/Dockerfile* || echo 'hadolint not found')
+  markdown: (command -v markdownlint >/dev/null && markdownlint . || echo 'markdownlint
+    not found')
+
+demos_on_rails:
+  description: "All demos must use the public interface (CLI/module); no internal imports."
+  # Block shortcuts that bypass the real user journey
+  forbidden_imports:
+    - "from src.ai_deck_gen.engine"
+    - "from ai_deck_gen.engine"
+    - "import src.ai_deck_gen.engine"
+  # Canonical ways to run demos
+  allowed_entrypoints:
+    - "deckgen build"
+    - "python -m ai_deck_gen.cli"
+  # Require scenario-driven demos and the harness
+  required_artifacts:
+    - "demo_scenarios/*.yaml"
+    - "tools/demo_harness.py"
+  # Enforce expectations are present in scenarios
+  required_yaml_keys:
+    - "topic"
+    - "audience"
+    - "slide_types"
+    - "feature_flags"
+    - "provider_profile.model"
+    - "expectations.min_layout_satisfaction"
+    - "expectations.min_elements_per_slide"
+    - "expectations.no_placeholders"
+  # Repo hygiene
+  banned_paths:
+    - "**/demo*.py"            # unless in tools/
+  banned_paths_allowlist:
+    - "tools/demo_harness.py"
+
+test_taxonomy:
+  description: "Ensure tests use our markers and call public seams."
+  pytest_required_markers:
+    - unit
+    - contract
+    - integration
+    - e2e
+    - smoke
+  # Block tests that import deep engine internals (should go through ports/CLI)
+  pytest_forbidden_imports:
+    - "src.ai_deck_gen.engines."
+  # Encourage public seams
+  pytest_allowed_imports:
+    - "src.ai_deck_gen.domain.ports"
+    - "app.cli.v1"  # for CLI invocation helpers
+
+copilot_context:
+  description: "Documents Copilot should read before generating code."
+  include_files:
+    - "docs/copilot_demo_rails.md"
+    - "DEMO_GUIDE.md"
