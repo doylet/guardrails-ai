@@ -1,10 +1,10 @@
 # AI Guardrails Bootstrap - Development Workspace
 
-> **Clean development environment for building the AI Guardrails Bootstrap system**
+> **Infrastructure-as-Code bootstrap system for AI guardrails**
 
 **🏭 Factory Status:** This is the development workspace - NOT the applied product
 **📦 Product Location:** Parent directory (`../`) contains applied guardrails
-**🎯 Purpose:** Build, test, and distribute the bootstrap system
+**🎯 Purpose:** Build, test, and distribute the infrastructure-as-code bootstrap system
 
 ---
 
@@ -13,9 +13,15 @@
 ```
 bootstrap-dev/                         # 🏭 CLEAN DEVELOPMENT WORKSPACE
 ├── src/                               # 📦 Source code and templates
-│   ├── ai_guardrails_bootstrap_modular.sh     # Main bootstrap script (372 lines)
-│   ├── ai_guardrails_bootstrap_unified.sh     # Legacy script (1,044 lines)
+│   ├── ai_guardrails_bootstrap.sh             # Production wrapper (Infrastructure-as-Code)
 │   └── ai-guardrails-templates/               # Template repository
+├── infrastructure_bootstrap.py               # 🚀 Infrastructure-as-Code engine
+├── installation-manifest.yaml               # 📋 Declarative installation definition
+├── development/                              # 🔧 Development-only tools
+│   ├── bootstrap-config.yaml                # Build configuration
+│   ├── bootstrap_manager.py                 # Advanced build tool
+│   ├── plugin_system.py                     # Plugin framework
+│   └── deprecated/                          # Legacy scripts (archived)
 ├── tests/                             # 🧪 Development test suites
 ├── docs/                              # 📚 Development documentation
 ├── dist/                              # 📦 Build artifacts and releases

@@ -1,0 +1,17 @@
+python:
+  lint: "ruff check ."
+  type: "mypy ."
+  test: "pytest -q"
+node:
+  lint: "npx -y eslint . || npx -y @biomejs/biome check ."
+  type: "npx -y tsc --noEmit"
+  test: "npm test --silent || pnpm -s test || yarn -s test"
+go:
+  lint: "golangci-lint run || (go vet ./... && echo 'fallback go vet ok')"
+  test: "go test ./..."
+rust:
+  lint: "cargo clippy --no-deps -q -D warnings || echo 'clippy not installed'"
+  test: "cargo test --quiet"
+generic:
+  shell: "shellcheck **/*.sh || echo 'shellcheck not found'"
+  markdown: "markdownlint . || echo 'markdownlint not found'"

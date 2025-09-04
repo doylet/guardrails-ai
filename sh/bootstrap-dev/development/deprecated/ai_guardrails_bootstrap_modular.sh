@@ -19,6 +19,8 @@ REPO_ROOT=""
 TEMPLATE_REPO="${AI_GUARDRAILS_REPO:-$DEFAULT_TEMPLATE_REPO}"
 TEMPLATE_BRANCH="${AI_GUARDRAILS_BRANCH:-$DEFAULT_BRANCH}"
 OFFLINE=0
+PROFILE=""
+COMPONENTS=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -28,6 +30,9 @@ while [[ $# -gt 0 ]]; do
     --doctor) MODE="doctor"; shift;;
     --update) MODE="update"; shift;;
     --list-versions) MODE="list-versions"; shift;;
+    --list-components) MODE="list-components"; shift;;
+    --profile) PROFILE="$2"; shift 2;;
+    --components) COMPONENTS="$2"; shift 2;;
     -C) REPO_ROOT="$2"; shift 2;;
     --force) FORCE=1; shift;;
     --verbose) VERBOSE=1; shift;;
@@ -47,12 +52,15 @@ Modes:
   --doctor        Diagnose issues
   --update        Update existing installation to latest templates
   --list-versions List available template versions
+  --list-components List available installation components
 
 Options:
   -C PATH               Target repository root (auto-detect if omitted)
   --force               Overwrite existing files
   --verbose             Extra logging
   --offline             Use embedded fallbacks (no network)
+  --profile NAME        Use installation profile (minimal|standard|full)
+  --components LIST     Install specific components (comma-separated)
   --template-repo URL   Custom template repository URL
   --template-branch BR  Template branch/tag (default: main)
 
@@ -94,6 +102,66 @@ echo "→ Target repo: $REPO_ROOT"
 log() { [[ $VERBOSE -eq 1 ]] && echo "[debug] $*"; }
 
 # ----------------------------------------------------------------------------
+# Component definitions
+get_components() {
+  case "$1" in
+    "core")
+      echo ".ai/guardrails.yaml .ai/envelope.json"
+      ;;
+    "schemas") 
+      echo "ai/schemas/copilot_envelope.schema.json"
+      ;;
+    "scripts")
+      echo "ai/scripts/check_envelope.py ai/scripts/check_envelope_local.py ai/scripts/lang_lint.sh ai/scripts/lang_test.sh"
+      ;;
+    "github")
+      echo ".github/workflows/ai_guardrails_on_commit.yml .github/pull_request_template.md .github/chatmodes/blueprint-mode-mod.chatmode.md"
+      ;;
+    "precommit")
+      echo ".pre-commit-config.yaml"
+      ;;
+    "docs")
+      echo "ai/capabilities.md docs/decisions/0000-ADR-template.md"
+      ;;
+    *)
+      echo ""
+      ;;
+  esac
+}
+
+get_profile_components() {
+  case "$1" in
+    "minimal")
+      echo "core schemas"
+      ;;
+    "standard")
+      echo "core schemas scripts docs precommit"
+      ;;
+    "full")
+      echo "core schemas scripts github docs precommit"
+      ;;
+    *)
+      echo "core schemas scripts docs"  # default
+      ;;
+  esac
+}
+
+list_components() {
+  echo "== Available Components =="
+  echo "  core      - Core AI guardrails configuration (.ai/ files)"
+  echo "  schemas   - JSON schemas for validation"
+  echo "  scripts   - Automation scripts (Python/bash)"
+  echo "  github    - GitHub workflows and templates"
+  echo "  precommit - Pre-commit hooks configuration"
+  echo "  docs      - Documentation templates"
+  echo ""
+  echo "== Available Profiles =="
+  echo "  minimal   - core, schemas"
+  echo "  standard  - core, schemas, scripts, docs, precommit (default)"
+  echo "  full      - all components including GitHub integration"
+}
+
+# ----------------------------------------------------------------------------
 # Template fetching
 fetch_template() {
   local template_path="$1"
@@ -104,7 +172,17 @@ fetch_template() {
     return
   fi
 
-  local url="${TEMPLATE_REPO}/${TEMPLATE_BRANCH}/templates/${template_path}"
+  # For file:// URLs, direct file access with proper path handling
+  if [[ "$TEMPLATE_REPO" =~ ^file:// ]]; then
+    # Remove templates/ prefix if it's already in the template_path
+    if [[ "$template_path" =~ ^templates/ ]]; then
+      local url="${TEMPLATE_REPO}/${template_path}"
+    else
+      local url="${TEMPLATE_REPO}/${template_path}"
+    fi
+  else
+    local url="${TEMPLATE_REPO}/${TEMPLATE_BRANCH}/${template_path}"
+  fi
   log "Fetching: $url"
 
   if command -v curl >/dev/null 2>&1; then
@@ -162,6 +240,48 @@ EOF
 }
 EOF
       ;;
+    "ai/schemas/copilot_envelope.schema.json")
+      cat > "$target_path" <<'EOF'
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Copilot Envelope",
+  "type": "object",
+  "properties": {
+    "discovery": { "type": "array" },
+    "assumptions": { "type": "array" },
+    "plan": { "type": "array" },
+    "changes": { "type": "array" },
+    "tests": { "type": "array" },
+    "validation": { "type": "object" },
+    "limits": { "type": "object" },
+    "risks": { "type": "array" },
+    "rollback": { "type": "array" },
+    "question": { "type": ["string", "null"] },
+    "status": { "type": "string" }
+  }
+}
+EOF
+      ;;
+    ".pre-commit-config.yaml"|"templates/.pre-commit-config.yaml")
+      cat > "$target_path" <<'EOF'
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-yaml
+  - repo: local
+    hooks:
+      - id: ai-lint
+        name: AI Guardrails Lint
+        entry: ai/scripts/lang_lint.sh
+        language: script
+        pass_filenames: false
+        always_run: true
+EOF
+      ;;
     *)
       echo "::error:: No embedded fallback for $template_path"
       return 1
@@ -173,6 +293,7 @@ EOF
 write_template() {
   local template_path="$1"
   local target_path="$2"
+  local optional="${3:-false}"
 
   mkdir -p "$(dirname "$target_path")"
 
@@ -181,7 +302,14 @@ write_template() {
     return 0
   fi
 
-  fetch_template "$template_path" "$target_path"
+  if fetch_template "$template_path" "$target_path"; then
+    return 0
+  elif [[ "$optional" == "true" && $OFFLINE -eq 1 ]]; then
+    echo "skip (optional): $target_path"
+    return 0
+  else
+    return 1
+  fi
 }
 
 # Get current installed version
@@ -283,35 +411,34 @@ ensure_local() {
 apply_templates() {
   echo "== Apply templates =="
 
-  # Core configuration
-  write_template ".ai/guardrails.yaml" ".ai/guardrails.yaml"
-  write_template ".ai/envelope.json" ".ai/envelope.json"
+  # Determine what components to install
+  local components_to_install
+  if [[ -n "$COMPONENTS" ]]; then
+    # Specific components requested
+    components_to_install="$COMPONENTS"
+    echo "Installing components: $components_to_install"
+  elif [[ -n "$PROFILE" ]]; then
+    # Profile requested
+    components_to_install=$(get_profile_components "$PROFILE")
+    echo "Installing profile '$PROFILE': $components_to_install"
+  else
+    # Default to standard profile
+    components_to_install=$(get_profile_components "standard")
+    echo "Installing default profile: $components_to_install"
+  fi
 
-  # Schemas
-  write_template "ai/schemas/copilot_envelope.schema.json" "ai/schemas/copilot_envelope.schema.json"
+  # Convert comma-separated to space-separated
+  components_to_install=$(echo "$components_to_install" | tr ',' ' ')
 
-  # Scripts
-  write_template "ai/scripts/check_envelope.py" "ai/scripts/check_envelope.py"
-  write_template "ai/scripts/check_envelope_local.py" "ai/scripts/check_envelope_local.py"
-  write_template "ai/scripts/lang_lint.sh" "ai/scripts/lang_lint.sh"
-  write_template "ai/scripts/lang_test.sh" "ai/scripts/lang_test.sh"
-
-  # Make scripts executable
-  chmod +x ai/scripts/*.py ai/scripts/*.sh 2>/dev/null || true
-
-  # GitHub files
-  write_template ".github/workflows/ai_guardrails_on_commit.yml" ".github/workflows/ai_guardrails_on_commit.yml"
-  write_template ".github/pull_request_template.md" ".github/pull_request_template.md"
-  write_template ".github/chatmodes/blueprint-mode-mod.chatmode.md" ".github/chatmodes/blueprint-mode-mod.chatmode.md"
-  write_template ".pre-commit-config.yaml" ".pre-commit-config.yaml"
-
-  # Documentation
-  write_template "ai/capabilities.md" "ai/capabilities.md"
-  write_template "docs/decisions/ADR-template.md" "docs/decisions/ADR-template.md"
+  # Install each component
+  for component in $components_to_install; do
+    install_component "$component"
+  done
 
   # Update .gitignore
   if [[ ! -f .gitignore ]] || ! grep -q '^\.ai/envelope\.json$' .gitignore; then
     echo ".ai/envelope.json" >> .gitignore
+    echo "Updated .gitignore"
   fi
 
   # Record installed version
@@ -321,6 +448,41 @@ apply_templates() {
   ensure_local
 
   echo "-- Apply complete --"
+}
+
+install_component() {
+  local component="$1"
+  local files=$(get_components "$component")
+  
+  if [[ -z "$files" ]]; then
+    echo "::warning:: Unknown component: $component"
+    return 1
+  fi
+
+  echo "Installing component: $component"
+  
+  for file_path in $files; do
+    # Handle special cases for template structure
+    local template_path="$file_path"
+    if [[ "$file_path" =~ ^\.github/ ]] || [[ "$file_path" =~ ^docs/ ]] || [[ "$file_path" == ".pre-commit-config.yaml" ]]; then
+      template_path="templates/$file_path"
+    fi
+    
+    local optional="false"
+    # Scripts are optional in offline mode
+    if [[ "$component" == "scripts" ]] || [[ "$component" == "github" ]]; then
+      optional="true"
+    fi
+    
+    write_template "$template_path" "$file_path" "$optional"
+  done
+
+  # Post-install actions
+  case "$component" in
+    "scripts")
+      chmod +x ai/scripts/*.py ai/scripts/*.sh 2>/dev/null || true
+      ;;
+  esac
 }
 
 update_installation() {
@@ -367,6 +529,7 @@ case "$MODE" in
   apply) apply_templates ;;
   update) update_installation ;;
   list-versions) list_versions ;;
+  list-components) list_components ;;
 esac
 
 echo "✅ Done."

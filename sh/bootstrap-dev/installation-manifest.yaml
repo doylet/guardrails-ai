@@ -1,0 +1,77 @@
+---
+# AI Guardrails Installation Manifest
+# Infrastructure-as-code approach - NO hardcoded file lists in shell scripts
+version: "1.0.0"
+name: "ai-guardrails-installation"
+
+# File discovery patterns instead of hardcoded lists
+file_patterns:
+  core:
+    description: "Core AI guardrails configuration"
+    patterns:
+      - ".ai/*.yaml"
+      - ".ai/*.json"
+    
+  schemas:
+    description: "JSON schemas for validation"
+    patterns:
+      - "ai/schemas/*.json"
+    
+  scripts:
+    description: "All automation scripts"
+    patterns:
+      - "ai/scripts/*.py"
+      - "ai/scripts/*.sh"
+    post_install:
+      - "chmod +x ai/scripts/*.py ai/scripts/*.sh"
+    
+  github:
+    description: "GitHub integration files"
+    patterns:
+      - "templates/.github/**/*"
+    target_prefix: ""  # Remove 'templates/' prefix when installing
+    
+  precommit:
+    description: "Pre-commit configuration"
+    patterns:
+      - ".pre-commit-config.yaml"
+    
+  docs:
+    description: "All documentation templates" 
+    patterns:
+      - "templates/docs/**/*.md"
+      - "ai/*.md"  # capabilities.md etc
+    target_prefix: ""  # Remove 'templates/' prefix when installing
+
+# Installation profiles - reference components, not files
+profiles:
+  minimal:
+    description: "Minimal installation - core only"
+    components: ["core", "schemas"]
+    
+  standard:
+    description: "Standard installation for most projects"
+    components: ["core", "schemas", "scripts", "precommit", "docs"]
+    
+  full:
+    description: "Full installation with GitHub integration"
+    components: ["core", "schemas", "scripts", "github", "precommit", "docs"]
+
+# Environment detection rules
+environment_detection:
+  has_github:
+    check: "test -d .git && git remote -v | grep -q github"
+  has_python:
+    check: "command -v python3 >/dev/null || command -v python >/dev/null"
+  has_node:
+    check: "command -v node >/dev/null && test -f package.json"
+
+# Global settings
+settings:
+  auto_create_directories: true
+  preserve_existing: true  # Don't overwrite without --force
+  validate_before_install: true
+  update_gitignore: true
+  gitignore_entries:
+    - ".ai/envelope.json"
+    - ".ai/*.local"

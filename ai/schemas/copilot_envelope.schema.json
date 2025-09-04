@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Copilot Envelope",
+  "type": "object",
+  "properties": {
+    "discovery": { "type": "array" },
+    "assumptions": { "type": "array" },
+    "plan": { "type": "array" },
+    "changes": { "type": "array" },
+    "tests": { "type": "array" },
+    "validation": { "type": "object" },
+    "limits": { "type": "object" },
+    "risks": { "type": "array" },
+    "rollback": { "type": "array" },
+    "question": { "type": ["string", "null"] },
+    "status": { "type": "string" }
+  }
+}
