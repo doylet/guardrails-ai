@@ -10,6 +10,7 @@ import glob
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Dict, List
 
@@ -376,6 +377,493 @@ class InfrastructureBootstrap:
             print(f"  {profile}: {config['description']}")
             print(f"    Components: {', '.join(config['components'])}")
 
+    def doctor(self, focus: str = "all") -> bool:
+        """Diagnostic workflow - validate installation integrity"""
+        print("🔍 AI Guardrails Doctor - Installation Diagnostics")
+        print("=" * 50)
+
+        issues_found = 0
+        merged_manifest = self._get_merged_manifest()
+
+        if focus == "yaml" or focus == "all":
+            issues_found += self._doctor_yaml_structure()
+
+        if focus == "all":
+            issues_found += self._doctor_file_integrity()
+            issues_found += self._doctor_component_status()
+            issues_found += self._doctor_environment()
+
+        print("\n" + "=" * 50)
+        if issues_found == 0:
+            print("✅ All checks passed - installation is healthy!")
+            return True
+        else:
+            print(f"⚠️  Found {issues_found} issues - run 'ensure --apply' to fix")
+            return False
+
+    def _doctor_yaml_structure(self) -> int:
+        """Validate YAML file structure and content"""
+        print("\n📋 YAML Structure Check:")
+        issues = 0
+
+        yaml_files = [
+            (".ai/guardrails.yaml", "AI guardrails configuration"),
+            (".ai/envelope.json", "Copilot envelope schema"),
+            (".pre-commit-config.yaml", "Pre-commit hooks configuration")
+        ]
+
+        for file_path, description in yaml_files:
+            full_path = self.target_dir / file_path
+            if full_path.exists():
+                try:
+                    if file_path.endswith('.yaml'):
+                        with open(full_path) as f:
+                            yaml.safe_load(f)
+                    elif file_path.endswith('.json'):
+                        import json
+                        with open(full_path) as f:
+                            json.load(f)
+                    print(f"  ✅ {file_path}: Valid syntax")
+                except Exception as e:
+                    print(f"  ❌ {file_path}: Invalid syntax - {e}")
+                    issues += 1
+            else:
+                print(f"  ⚠️  {file_path}: Missing ({description})")
+                issues += 1
+
+        return issues
+
+    def _doctor_file_integrity(self) -> int:
+        """Check if all expected files are present"""
+        print("\n📁 File Integrity Check:")
+        issues = 0
+        merged_manifest = self._get_merged_manifest()
+
+        for component, config in merged_manifest['components'].items():
+            try:
+                files = self.discover_files(component)
+                missing_files = []
+
+                for rel_file in files:
+                    # Determine source path
+                    if self._is_plugin_component(component):
+                        plugin_path = self._get_plugin_path_for_component(component)
+                        src_path = plugin_path / rel_file if plugin_path else None
+                    else:
+                        src_path = self.template_repo / rel_file
+
+                    # Check target path
+                    target_path = self.target_dir / rel_file
+                    if src_path and src_path.exists() and not target_path.exists():
+                        missing_files.append(rel_file)
+
+                if missing_files:
+                    print(f"  ⚠️  {component}: Missing {len(missing_files)} files")
+                    for missing in missing_files[:3]:  # Show first 3
+                        print(f"    - {missing}")
+                    if len(missing_files) > 3:
+                        print(f"    ... and {len(missing_files) - 3} more")
+                    issues += len(missing_files)
+                else:
+                    print(f"  ✅ {component}: All files present")
+
+            except Exception as e:
+                print(f"  ❌ {component}: Cannot check - {e}")
+                issues += 1
+
+        return issues
+
+    def _doctor_component_status(self) -> int:
+        """Check component installation status"""
+        print("\n🧩 Component Status Check:")
+        issues = 0
+        merged_manifest = self._get_merged_manifest()
+
+        for component, config in merged_manifest['components'].items():
+            try:
+                files = self.discover_files(component)
+                installed_count = 0
+
+                for rel_file in files:
+                    target_path = self.target_dir / rel_file
+                    if target_path.exists():
+                        installed_count += 1
+
+                if installed_count == 0:
+                    print(f"  ❌ {component}: Not installed (0/{len(files)} files)")
+                    issues += 1
+                elif installed_count < len(files):
+                    print(f"  ⚠️  {component}: Partially installed ({installed_count}/{len(files)} files)")
+                    issues += 1
+                else:
+                    print(f"  ✅ {component}: Fully installed ({installed_count}/{len(files)} files)")
+
+            except Exception as e:
+                print(f"  ❌ {component}: Cannot analyze - {e}")
+                issues += 1
+
+        return issues
+
+    def _doctor_environment(self) -> int:
+        """Check environment and dependencies"""
+        print("\n🌍 Environment Check:")
+        issues = 0
+
+        # Check git repository
+        if (self.target_dir / ".git").exists():
+            print("  ✅ Git repository detected")
+        else:
+            print("  ⚠️  No git repository (some features may not work)")
+            issues += 1
+
+        # Check Python
+        import sys
+        python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
+        print(f"  ✅ Python {python_version} available")
+
+        # Check pre-commit
+        try:
+            result = subprocess.run(['pre-commit', '--version'],
+                                 capture_output=True, text=True, check=False)
+            if result.returncode == 0:
+                print(f"  ✅ Pre-commit available: {result.stdout.strip()}")
+            else:
+                print("  ⚠️  Pre-commit not installed")
+                issues += 1
+        except FileNotFoundError:
+            print("  ⚠️  Pre-commit not installed")
+            issues += 1
+
+        return issues
+
+    def doctor_yaml(self, component_filter: str = None):
+        """Generate YAML repair manifest for repairs needed."""
+        from datetime import datetime
+
+        repair_manifest = {
+            'repair_manifest': {
+                'generated': datetime.now().isoformat(),
+                'scope': component_filter or 'all',
+                'repairs': []
+            }
+        }
+
+        # Check installation manifest
+        manifest_path = self.target_dir / "src" / "installation-manifest.yaml"
+        if not manifest_path.exists():
+            repair_manifest['repair_manifest']['repairs'].append({
+                'type': 'missing_file',
+                'path': str(manifest_path),
+                'action': 'create_installation_manifest'
+            })
+        else:
+            try:
+                with open(manifest_path, 'r') as f:
+                    yaml.safe_load(f)
+            except yaml.YAMLError as e:
+                repair_manifest['repair_manifest']['repairs'].append({
+                    'type': 'yaml_syntax_error',
+                    'path': str(manifest_path),
+                    'error': str(e),
+                    'action': 'fix_yaml_syntax'
+                })
+
+        # Check plugin manifests
+        plugins_dir = self.target_dir / "src" / "plugins"
+        if plugins_dir.exists():
+            for plugin_dir in plugins_dir.iterdir():
+                if plugin_dir.is_dir():
+                    plugin_manifest = plugin_dir / "plugin-manifest.yaml"
+                    if not plugin_manifest.exists():
+                        repair_manifest['repair_manifest']['repairs'].append({
+                            'type': 'missing_file',
+                            'path': str(plugin_manifest),
+                            'plugin': plugin_dir.name,
+                            'action': 'create_plugin_manifest'
+                        })
+                    else:
+                        try:
+                            with open(plugin_manifest, 'r') as f:
+                                yaml.safe_load(f)
+                        except yaml.YAMLError as e:
+                            repair_manifest['repair_manifest']['repairs'].append({
+                                'type': 'yaml_syntax_error',
+                                'path': str(plugin_manifest),
+                                'plugin': plugin_dir.name,
+                                'error': str(e),
+                                'action': 'fix_yaml_syntax'
+                            })
+
+        # Check for missing files from components (derived from manifest)
+        try:
+            merged_manifest = self._get_merged_manifest()
+            for component, config in merged_manifest['components'].items():
+                # Filter by component if specified
+                if component_filter and component != component_filter:
+                    continue
+
+                try:
+                    files = self.discover_files(component)
+                    for rel_file in files:
+                        # Determine source path
+                        if self._is_plugin_component(component):
+                            plugin_path = self._get_plugin_path_for_component(component)
+                            src_path = plugin_path / rel_file if plugin_path else None
+                        else:
+                            src_path = self.template_repo / rel_file
+
+                        # Check target path
+                        target_path = self.target_dir / rel_file
+                        if src_path and src_path.exists() and not target_path.exists():
+                            # Include ALL missing files, not just YAML (that was too limiting)
+                            repair_manifest['repair_manifest']['repairs'].append({
+                                'type': 'missing_file',
+                                'path': str(target_path),
+                                'component': component,
+                                'source_file': rel_file,
+                                'action': 'install_component'
+                            })
+                except Exception as e:
+                    # If we can't discover files for a component, note it
+                    repair_manifest['repair_manifest']['repairs'].append({
+                        'type': 'component_error',
+                        'component': component,
+                        'error': str(e),
+                        'action': 'check_component_configuration'
+                    })
+        except Exception as e:
+            repair_manifest['repair_manifest']['repairs'].append({
+                'type': 'manifest_error',
+                'error': str(e),
+                'action': 'check_installation_manifest'
+            })
+
+        # Output the repair manifest as YAML
+        print(yaml.dump(repair_manifest, default_flow_style=False, sort_keys=False))
+
+        return len(repair_manifest['repair_manifest']['repairs']) == 0
+
+    def ensure(self, apply: bool = False, focus: str = "all", yaml_input: str = None, component_filter: str = None) -> bool:
+        """Ensure workflow - repair/install missing components"""
+        if apply:
+            print("🔧 AI Guardrails Ensure - Applying Repairs")
+        else:
+            print("🔍 AI Guardrails Ensure - Dry Run (use --apply to fix)")
+        print("=" * 50)
+
+        # Handle YAML input from stdin or detect YAML focus
+        if yaml_input:
+            print("📄 Processing YAML repair manifest...")
+            try:
+                # Try to parse YAML input
+                if yaml_input.strip().startswith('{'):
+                    # Looks like JSON, try JSON first
+                    import json
+                    repair_data = json.loads(yaml_input)
+                else:
+                    # Try YAML
+                    repair_data = yaml.safe_load(yaml_input)
+
+                if 'repair_manifest' in repair_data:
+                    repairs = repair_data['repair_manifest']['repairs']
+                    return self._apply_repair_manifest(repairs, apply)
+                else:
+                    print("❌ Invalid repair manifest format - missing 'repair_manifest' key")
+                    return False
+            except (yaml.YAMLError, json.JSONDecodeError) as e:
+                print(f"❌ Failed to parse YAML input: {e}")
+                return False
+
+        # Standard workflow - run doctor first to identify issues
+        print("Running diagnostics...")
+        issues_found = not self.doctor(focus)
+
+        if not issues_found:
+            print("\n✅ No issues found - nothing to repair!")
+            return True
+
+        if not apply:
+            print(f"\n💡 Run with --apply to automatically fix issues")
+            return False
+
+        print(f"\n🔧 Applying repairs...")
+        repairs_successful = 0
+
+        if focus == "yaml" or focus == "all":
+            repairs_successful += self._ensure_yaml_structure(apply)
+
+        if focus == "all":
+            repairs_successful += self._ensure_components(apply)
+            repairs_successful += self._ensure_environment(apply)
+
+        print(f"\n✅ Applied {repairs_successful} repairs successfully")
+        return True
+
+    def _apply_repair_manifest(self, repairs: list, apply: bool) -> bool:
+        """Apply repairs from a YAML manifest"""
+        if not apply:
+            print(f"📋 Would apply {len(repairs)} repairs:")
+            for repair in repairs:
+                print(f"  - {repair['action']}: {repair['path']}")
+            print("\n💡 Use --apply to execute these repairs")
+            return False
+
+        repairs_successful = 0
+        for repair in repairs:
+            try:
+                if repair['action'] == 'install_component':
+                    component = repair.get('component', 'core')
+                    print(f"  Installing component: {component}")
+                    if self.install_component(component, force=True):
+                        repairs_successful += 1
+                elif repair['action'] == 'create_installation_manifest':
+                    print(f"  Creating installation manifest...")
+                    # Create a basic installation manifest
+                    self._create_default_installation_manifest()
+                    repairs_successful += 1
+                elif repair['action'] == 'create_plugin_manifest':
+                    plugin = repair.get('plugin', 'unknown')
+                    print(f"  Creating plugin manifest for: {plugin}")
+                    self._create_default_plugin_manifest(plugin)
+                    repairs_successful += 1
+                elif repair['action'] == 'fix_yaml_syntax':
+                    print(f"  ⚠️  Cannot auto-fix YAML syntax in: {repair['path']}")
+                    print(f"     Error: {repair.get('error', 'Unknown')}")
+                    print(f"     Please fix manually")
+                else:
+                    print(f"  ❌ Unknown repair action: {repair['action']}")
+            except Exception as e:
+                print(f"  ❌ Failed to apply repair {repair['action']}: {e}")
+
+        print(f"\n✅ Applied {repairs_successful}/{len(repairs)} repairs successfully")
+        return repairs_successful == len(repairs)
+
+    def _create_default_installation_manifest(self):
+        """Create a basic installation manifest"""
+        manifest_path = self.target_dir / "src" / "installation-manifest.yaml"
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+
+        default_manifest = {
+            'components': {
+                'core': {
+                    'description': 'Core AI Guardrails files',
+                    'files': ['.ai/guardrails.yaml']
+                }
+            },
+            'profiles': {
+                'default': {
+                    'description': 'Default profile',
+                    'components': ['core']
+                }
+            },
+            'settings': {
+                'template_source_directory': 'src/ai-guardrails-templates',
+                'plugin_directories': ['src/plugins']
+            }
+        }
+
+        with open(manifest_path, 'w') as f:
+            yaml.dump(default_manifest, f, default_flow_style=False, sort_keys=False)
+
+    def _create_default_plugin_manifest(self, plugin_name: str):
+        """Create a basic plugin manifest"""
+        plugin_dir = self.target_dir / "src" / "plugins" / plugin_name
+        manifest_path = plugin_dir / "plugin-manifest.yaml"
+
+        plugin_dir.mkdir(parents=True, exist_ok=True)
+
+        default_manifest = {
+            'components': {
+                f'{plugin_name}-core': {
+                    'description': f'Core files for {plugin_name} plugin',
+                    'files': ['README.md']
+                }
+            },
+            'profiles': {
+                'default': {
+                    'description': f'Default profile for {plugin_name}',
+                    'components': [f'{plugin_name}-core']
+                }
+            }
+        }
+
+        with open(manifest_path, 'w') as f:
+            yaml.dump(default_manifest, f, default_flow_style=False, sort_keys=False)
+
+    def _ensure_yaml_structure(self, apply: bool) -> int:
+        """Repair YAML structure issues"""
+        if not apply:
+            return 0
+
+        repairs = 0
+
+        # Check for missing core YAML files and install them
+        yaml_component_map = {
+            ".ai/guardrails.yaml": "core",
+            ".ai/envelope.json": "core",
+            ".pre-commit-config.yaml": "precommit"
+        }
+
+        for file_path, component in yaml_component_map.items():
+            full_path = self.target_dir / file_path
+            if not full_path.exists():
+                print(f"  🔧 Installing missing {file_path}")
+                if self.install_component(component, force=False):
+                    repairs += 1
+
+        return repairs
+
+    def _ensure_components(self, apply: bool) -> int:
+        """Repair component installation issues"""
+        if not apply:
+            return 0
+
+        repairs = 0
+        merged_manifest = self._get_merged_manifest()
+
+        for component, config in merged_manifest['components'].items():
+            try:
+                files = self.discover_files(component)
+                missing_files = []
+
+                for rel_file in files:
+                    target_path = self.target_dir / rel_file
+                    if not target_path.exists():
+                        missing_files.append(rel_file)
+
+                if missing_files:
+                    print(f"  🔧 Reinstalling {component} (missing {len(missing_files)} files)")
+                    if self.install_component(component, force=False):
+                        repairs += 1
+
+            except Exception as e:
+                print(f"  ❌ Cannot repair {component}: {e}")
+
+        return repairs
+
+    def _ensure_environment(self, apply: bool) -> int:
+        """Repair environment issues"""
+        if not apply:
+            return 0
+
+        repairs = 0
+
+        # Install pre-commit if missing
+        try:
+            subprocess.run(['pre-commit', '--version'],
+                         capture_output=True, check=True)
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            print("  🔧 Installing pre-commit")
+            try:
+                subprocess.run([
+                    'python3', '-m', 'pip', 'install', 'pre-commit'
+                ], check=True, capture_output=True)
+                repairs += 1
+            except subprocess.CalledProcessError as e:
+                print(f"  ❌ Failed to install pre-commit: {e}")
+
+        return repairs
+
 def main():
     import argparse
 
@@ -399,6 +887,30 @@ def main():
     component_parser = subparsers.add_parser('component', help='Install specific component')
     component_parser.add_argument('component', help='Component to install')
 
+    # Doctor workflow
+    doctor_parser = subparsers.add_parser('doctor', help='Validate installation integrity')
+    doctor_parser.add_argument('focus', nargs='?', default='all',
+                              choices=['all', 'yaml'],
+                              help='Focus area for diagnostics (default: all)')
+    doctor_parser.add_argument('--format', choices=['human', 'yaml'], default='human',
+                              help='Output format: human-readable or YAML repair manifest')
+    doctor_parser.add_argument('--component',
+                              help='Generate repair manifest for specific component only')
+
+    # Ensure workflow
+    ensure_parser = subparsers.add_parser('ensure', help='Repair installation issues')
+    ensure_parser.add_argument('--apply', action='store_true',
+                              help='Apply repairs (default: dry run)')
+    ensure_parser.add_argument('--manifest',
+                              help='Apply repairs from YAML manifest file')
+    ensure_parser.add_argument('--from-stdin', action='store_true',
+                              help='Read repair manifest from stdin')
+    ensure_parser.add_argument('--component',
+                              help='Repair specific component only')
+    ensure_parser.add_argument('focus', nargs='?', default='all',
+                              choices=['all', 'yaml'],
+                              help='Focus area for repairs (default: all)')
+
     # List commands
     subparsers.add_parser('list-components', help='List available components')
     subparsers.add_parser('list-profiles', help='List available profiles')
@@ -417,6 +929,34 @@ def main():
             exit(0 if success else 1)
         elif args.command == 'component':
             success = bootstrap.install_component(args.component, args.force)
+            exit(0 if success else 1)
+        elif args.command == 'doctor':
+            if args.format == 'yaml':
+                success = bootstrap.doctor_yaml(component_filter=args.component)
+            else:
+                success = bootstrap.doctor(args.focus)
+            exit(0 if success else 1)
+        elif args.command == 'ensure':
+            # Handle different input sources for repair manifest
+            yaml_input = None
+
+            if args.manifest:
+                # Read from file
+                with open(args.manifest, 'r') as f:
+                    yaml_input = f.read()
+            elif args.from_stdin and not sys.stdin.isatty():
+                # Read from stdin
+                yaml_input = sys.stdin.read().strip()
+            elif not sys.stdin.isatty():
+                # Auto-detect stdin input
+                yaml_input = sys.stdin.read().strip()
+
+            success = bootstrap.ensure(
+                apply=args.apply,
+                focus=args.focus,
+                yaml_input=yaml_input,
+                component_filter=args.component
+            )
             exit(0 if success else 1)
         elif args.command == 'list-components':
             bootstrap.list_all_components()

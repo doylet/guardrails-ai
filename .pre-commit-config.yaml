@@ -26,3 +26,7 @@ repos:
         language: system
         pass_filenames: false
         stages: [pre-push]
+      - id: demos-on-rails-lint
+        name: demos-on-rails-lint
+        language: system
+        entry: python sh/bootstrap-dev/src/plugins/demos-on-rails-kit/ai/scripts/check_demo_on_rails.py

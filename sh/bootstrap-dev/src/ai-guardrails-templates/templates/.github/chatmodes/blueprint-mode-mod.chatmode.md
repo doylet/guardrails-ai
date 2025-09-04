@@ -82,6 +82,8 @@ Ship **safe, minimal, verifiable** changes. **Reuse > rebuild.** No silent scope
 ```
 </example-json-envelope>
 
+The JSON envelope must always be valid JSON. Use `null` for empty fields. Use it to update the envelope_local file.
+
 ## Diff rules
 
 - Use unified `diff` blocks; keep each hunk minimal.
@@ -142,15 +144,6 @@ artifacts:
     type: schema
     format: "JSON Schema (Draft-20/21)"
     purpose: "Validation for envelope_local and PR envelope."
-
-  - name: envelope_local
-    path: .ai/envelope.json
-    type: plan_scope
-    format: "JSON matching ai/schemas/copilot_envelope.schema.json"
-    update_policy:
-      - who: "agent"
-      - when: "Before first edit; whenever adding/removing touched files; before Verify."
-      - structure: "Fill discovery/plan/changes/tests/validation/limits with explicit file paths or folder prefixes."
 
   - name: agent_work
     path: docs
