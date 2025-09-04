@@ -1,0 +1,21 @@
+name: demo-gate
+on:
+  pull_request:
+    paths:
+      - "**/*.py"
+      - "demo_scenarios/**"
+      - "tools/demo_harness.py"
+      - ".ai/**"
+jobs:
+  demo-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Lint demos on rails
+        run: python scripts/check_demo_on_rails.py
+      - name: Smoke run example demo
+        run: python tools/demo_harness.py run demo_scenarios/example.yaml || true
