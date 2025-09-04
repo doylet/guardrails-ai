@@ -15,39 +15,19 @@ from pathlib import Path
 from typing import Dict, List
 
 class InfrastructureBootstrap:
-    def __init__(self, manifest_path: str = "src/installation-manifest.yaml", template_repo: str = None, target_dir: str = "."):
-        # Handle relative paths for manifest
-        if not Path(manifest_path).is_absolute():
-            # Look for manifest relative to current directory first
-            if Path(manifest_path).exists():
-                self.manifest_path = Path(manifest_path).resolve()
-            else:
-                # Look relative to the project root (parent of bin directory)
-                bin_dir = Path(__file__).parent
-                project_root = bin_dir.parent
-                candidate_path = project_root / manifest_path
-                if candidate_path.exists():
-                    self.manifest_path = candidate_path
-                else:
-                    # Fallback to original path
-                    self.manifest_path = Path(manifest_path).resolve()
-        else:
-            self.manifest_path = Path(manifest_path)
+    def __init__(self, target_dir: Path = None):
+        """Initialize the bootstrap system"""
+        self.target_dir = Path(target_dir) if target_dir else Path.cwd()
+        self.manifest_path = self.target_dir / "src" / "installation-manifest.yaml"
+        self.state_path = self.target_dir / ".ai-guardrails-state.yaml"
+        self.template_repo = self.target_dir / "src" / "ai-guardrails-templates"
+        self.plugins = {}
 
-        self.target_dir = Path(target_dir)
+        # Load manifest
         self.manifest = self._load_manifest()
 
-        # Determine template repository path
-        if template_repo:
-            self.template_repo = Path(template_repo)
-        else:
-            # Get from manifest settings or use default
-            if 'settings' in self.manifest and 'template_repository' in self.manifest['settings']:
-                self.template_repo = self.manifest_path.parent / self.manifest['settings']['template_repository']
-            else:
-                self.template_repo = self.manifest_path.parent / "ai-guardrails-templates"
-
-        self.plugins = self._discover_plugins()
+        # Discover plugins
+        self._discover_plugins()
 
     def _load_manifest(self) -> Dict:
         """Load installation manifest"""
@@ -100,6 +80,108 @@ class InfrastructureBootstrap:
                 merged.setdefault('profiles', {}).update(plugin_config['profiles'])
 
         return merged
+
+    def _load_state(self) -> Dict:
+        """Load the installation state file"""
+        if not self.state_path.exists():
+            return {
+                'version': '1.0',
+                'installed_profile': None,
+                'installed_components': [],
+                'installation_history': []
+            }
+
+        try:
+            with open(self.state_path, 'r') as f:
+                return yaml.safe_load(f) or {}
+        except Exception as e:
+            print(f"Warning: Could not load state file: {e}")
+            return {
+                'version': '1.0',
+                'installed_profile': None,
+                'installed_components': [],
+                'installation_history': []
+            }
+
+    def _save_state(self, state: Dict):
+        """Save the installation state file"""
+        try:
+            with open(self.state_path, 'w') as f:
+                yaml.dump(state, f, default_flow_style=False, sort_keys=False)
+        except Exception as e:
+            print(f"Warning: Could not save state file: {e}")
+
+    def _update_state_for_profile(self, profile: str, components: List[str]):
+        """Update state file after profile installation"""
+        from datetime import datetime
+
+        state = self._load_state()
+        state['installed_profile'] = profile
+        state['installed_components'] = list(set(state.get('installed_components', []) + components))
+
+        # Add to history
+        history_entry = {
+            'timestamp': datetime.now().isoformat(),
+            'action': 'install_profile',
+            'profile': profile,
+            'components': components
+        }
+        state.setdefault('installation_history', []).append(history_entry)
+
+        self._save_state(state)
+
+    def _update_state_for_component(self, component: str):
+        """Update state file after component installation"""
+        from datetime import datetime
+
+        state = self._load_state()
+        if component not in state.get('installed_components', []):
+            state.setdefault('installed_components', []).append(component)
+
+            # Add to history
+            history_entry = {
+                'timestamp': datetime.now().isoformat(),
+                'action': 'install_component',
+                'component': component
+            }
+            state.setdefault('installation_history', []).append(history_entry)
+
+            self._save_state(state)
+
+    def show_state(self):
+        """Show current installation state"""
+        state = self._load_state()
+
+        print("🔍 AI Guardrails Installation State")
+        print("=" * 50)
+
+        if state.get('installed_profile'):
+            print(f"📦 Profile: {state['installed_profile']}")
+        else:
+            print("📦 Profile: Not set (manual installation)")
+
+        installed_components = state.get('installed_components', [])
+        if installed_components:
+            print(f"🧩 Components ({len(installed_components)}):")
+            for component in sorted(installed_components):
+                print(f"  • {component}")
+        else:
+            print("🧩 Components: None tracked (run 'init' to establish state)")
+
+        history = state.get('installation_history', [])
+        if history:
+            print(f"\n📋 Installation History ({len(history)} entries):")
+            for entry in history[-5:]:  # Show last 5 entries
+                timestamp = entry.get('timestamp', 'Unknown')
+                action = entry.get('action', 'Unknown')
+                if action == 'install_profile':
+                    print(f"  • {timestamp}: Installed profile '{entry.get('profile')}' with {len(entry.get('components', []))} components")
+                elif action == 'install_component':
+                    print(f"  • {timestamp}: Installed component '{entry.get('component')}'")
+            if len(history) > 5:
+                print(f"  ... and {len(history) - 5} more entries")
+
+        print()
 
     def _is_plugin_component(self, component: str) -> bool:
         """Check if a component comes from a plugin"""
@@ -226,6 +308,10 @@ class InfrastructureBootstrap:
             if component == 'precommit' and success:
                 self._install_precommit_hooks()
 
+            # Update state for successful individual component installation
+            if success:
+                self._update_state_for_component(component)
+
             return success
 
         except ValueError as e:
@@ -321,9 +407,17 @@ class InfrastructureBootstrap:
         print(f"Installing profile: {profile} ({profile_config['description']})")
 
         success = True
+        installed_components = []
+
         for component in components:
-            if not self.install_component(component, force):
+            if self.install_component(component, force):
+                installed_components.append(component)
+            else:
                 success = False
+
+        # Update state file if any components were installed
+        if installed_components:
+            self._update_state_for_profile(profile, installed_components)
 
         return success
 
@@ -594,13 +688,30 @@ class InfrastructureBootstrap:
                                 'action': 'fix_yaml_syntax'
                             })
 
-        # Check for missing files from components (derived from manifest)
+        # Check for missing files from components (only check installed components)
         try:
+            # Load state to see what components should be installed
+            state = self._load_state()
+            installed_components = state.get('installed_components', [])
+
+            # If no state exists, check all components (backward compatibility)
+            if not installed_components:
+                print("⚠️  No installation state found - checking all available components")
+                print("💡 Run 'ai-guardrails init' to establish proper state tracking")
+
             merged_manifest = self._get_merged_manifest()
-            for component, config in merged_manifest['components'].items():
+            components_to_check = installed_components if installed_components else merged_manifest['components'].keys()
+
+            for component in components_to_check:
                 # Filter by component if specified
                 if component_filter and component != component_filter:
                     continue
+
+                # Skip if component doesn't exist in manifest
+                if component not in merged_manifest['components']:
+                    continue
+
+                config = merged_manifest['components'][component]
 
                 try:
                     files = self.discover_files(component)
@@ -1001,6 +1112,7 @@ def main():
     # List commands
     subparsers.add_parser('list-components', help='List available components')
     subparsers.add_parser('list-profiles', help='List available profiles')
+    subparsers.add_parser('show-state', help='Show current installation state')
 
     # Discover what files would be installed
     discover_parser = subparsers.add_parser('discover', help='Show what files would be installed')
@@ -1009,7 +1121,7 @@ def main():
     args = parser.parse_args()
 
     try:
-        bootstrap = InfrastructureBootstrap(args.manifest, args.template_repo, args.target)
+        bootstrap = InfrastructureBootstrap(args.target)
 
         if args.command == 'init':
             success = bootstrap.init(args.profile, args.dry_run)
@@ -1052,6 +1164,8 @@ def main():
             bootstrap.list_all_components()
         elif args.command == 'list-profiles':
             bootstrap.list_all_profiles()
+        elif args.command == 'show-state':
+            bootstrap.show_state()
         elif args.command == 'discover':
             bootstrap.list_discovered_files(args.component)
         else:
