@@ -6,6 +6,7 @@ installed_components:
 - schemas
 - docs
 - scripts
+- github
 installation_history:
 - timestamp: '2025-09-04T19:36:59.042926'
   action: install_component
@@ -31,3 +32,6 @@ installation_history:
   - scripts
   - precommit
   - docs
+- timestamp: '2025-09-04T21:20:16.867922'
+  action: install_component
+  component: github

@@ -34,7 +34,7 @@ components:
   precommit:
     description: "Pre-commit configuration"
     file_patterns:
-      - ".pre-commit-config.yaml"
+      - ".pre-commit-config.yaml.example"
 
   docs:
     description: "All documentation templates"

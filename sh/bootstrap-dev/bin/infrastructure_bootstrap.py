@@ -7,6 +7,7 @@ NO hardcoded file lists in shell scripts!
 
 import yaml
 import glob
+import json
 import os
 import shutil
 import subprocess
@@ -47,43 +48,27 @@ class InfrastructureBootstrap:
     def __init__(self, target_dir: Path = None):
         """Initialize the bootstrap system"""
         self.target_dir = Path(target_dir) if target_dir else Path.cwd()
-        self.manifest_path = self.target_dir / "src" / "installation-manifest.yaml"
+        
+        # Templates should come from the tool installation, not the target project
+        script_dir = Path(__file__).parent
+        self.template_repo = script_dir.parent / "src" / "ai-guardrails-templates"
+        
+        # Manifest should also come from tool installation
+        self.manifest_path = script_dir.parent / "src" / "installation-manifest.yaml"
         self.state_path = self.target_dir / ".ai-guardrails-state.yaml"
-        self.template_repo = self.target_dir / "src" / "ai-guardrails-templates"
         self.plugins = {}
 
         # Load manifest
         self.manifest = self._load_manifest()
 
         # Discover plugins
-        self._discover_plugins()
+        self.plugins = self._discover_plugins()
 
     def _load_manifest(self) -> Dict:
-        """Load installation manifest or create default if it doesn't exist"""
+        """Load installation manifest from tool installation"""
         if not self.manifest_path.exists():
-            # For fresh projects, use the template manifest from this repository
-            # Look for the manifest in the current repository structure
-            template_manifest_path = None
-
-            # Try to find the template manifest in common locations
-            search_paths = [
-                Path(__file__).parent.parent / "src" / "installation-manifest.yaml",  # When running from this repo
-                self.target_dir / "src" / "installation-manifest.yaml",  # Target location
-            ]
-
-            for path in search_paths:
-                if path.exists():
-                    template_manifest_path = path
-                    break
-
-            if template_manifest_path:
-                # Load from template
-                with open(template_manifest_path) as f:
-                    return yaml.safe_load(f)
-            else:
-                # Create minimal default manifest for bootstrapping
-                return self._create_minimal_manifest()
-
+            raise FileNotFoundError(f"Installation manifest not found: {self.manifest_path}")
+        
         with open(self.manifest_path) as f:
             return yaml.safe_load(f)
 
@@ -115,18 +100,14 @@ class InfrastructureBootstrap:
         }
 
     def _discover_plugins(self) -> Dict:
-        """Discover and load plugin manifests"""
+        """Discover and load plugin manifests from tool installation"""
         plugins = {}
 
-        # Get plugins directory from manifest settings
-        plugins_dir = None
-        if 'settings' in self.manifest and 'plugins_directory' in self.manifest['settings']:
-            plugins_dir = Path(self.manifest_path).parent / self.manifest['settings']['plugins_directory']
-        else:
-            # Fallback: look for plugins in subdirectories of manifest directory
-            plugins_dir = Path(self.manifest_path).parent
-
-        # Look for plugin-manifest.yaml files in subdirectories of plugins directory
+        # Plugins should come from the tool installation plugins directory
+        script_dir = Path(__file__).parent
+        plugins_dir = script_dir.parent / "src" / "plugins"
+        
+        # Look for plugin-manifest.yaml files only in plugins directory
         if plugins_dir.exists():
             for plugin_manifest in plugins_dir.glob("*/plugin-manifest.yaml"):
                 try:
@@ -288,7 +269,7 @@ class InfrastructureBootstrap:
                 return plugin_name
         return None
 
-    def discover_files(self, component: str) -> List[str]:
+    def discover_files(self, component: str, debug: bool = False) -> List[str]:
         """Dynamically discover files based on patterns - NO hardcoding!"""
         merged_manifest = self._get_merged_manifest()
 
@@ -297,6 +278,11 @@ class InfrastructureBootstrap:
 
         component_config = merged_manifest['components'][component]
         patterns = component_config['file_patterns']
+
+        if debug:
+            print(f"[DEBUG] Discovering files for component '{component}'")
+            print(f"[DEBUG] Patterns: {patterns}")
+            print(f"[DEBUG] Template repo: {self.template_repo}")
 
         # Check if this is a plugin component
         is_plugin_component = self._is_plugin_component(component)
@@ -308,13 +294,38 @@ class InfrastructureBootstrap:
                 plugin_path = self._get_plugin_path_for_component(component)
                 if plugin_path:
                     search_path = plugin_path / pattern
+                    if debug:
+                        print(f"[DEBUG] Plugin search path: {search_path}")
                 else:
+                    if debug:
+                        print(f"[DEBUG] Plugin path not found for component {component}")
                     continue
             else:
-                # For base components, search in template repository
-                search_path = self.template_repo / pattern
+                # For base components, try both template repository root and templates/ subdirectory
+                search_paths = [
+                    self.template_repo / pattern,  # Try root first (for files like .pre-commit-config.yaml.example)
+                    self.template_repo / "templates" / pattern  # Then try templates/ subdirectory
+                ]
+                
+                if debug:
+                    print(f"[DEBUG] Base component search paths for pattern '{pattern}':")
+                    for sp in search_paths:
+                        print(f"[DEBUG]   - {sp}")
+                
+                for search_path in search_paths:
+                    matches = glob.glob(str(search_path), recursive=True)
+                    if debug and matches:
+                        print(f"[DEBUG] Found {len(matches)} matches in {search_path}")
+                        for match in matches:
+                            print(f"[DEBUG]   - {match}")
+                    discovered.extend(matches)
+                continue  # Skip the single search below since we handled it here
 
             matches = glob.glob(str(search_path), recursive=True)
+            if debug and matches:
+                print(f"[DEBUG] Found {len(matches)} matches in {search_path}")
+                for match in matches:
+                    print(f"[DEBUG]   - {match}")
             discovered.extend(matches)
 
         # Convert to relative paths from the appropriate base directory
@@ -323,15 +334,43 @@ class InfrastructureBootstrap:
         if is_plugin_component:
             plugin_path = self._get_plugin_path_for_component(component)
             base_dir = plugin_path if plugin_path else Path(self.manifest_path).parent
+            for file_path in discovered:
+                if os.path.isfile(file_path):
+                    rel_path = os.path.relpath(file_path, base_dir)
+                    relative_files.append(rel_path)
         else:
-            base_dir = self.template_repo
-
-        for file_path in discovered:
-            if os.path.isfile(file_path):
-                rel_path = os.path.relpath(file_path, base_dir)
-                relative_files.append(rel_path)
+            # For base components, determine the correct base directory for each file
+            for file_path in discovered:
+                if os.path.isfile(file_path):
+                    file_path_obj = Path(file_path)
+                    
+                    # Check if file is in templates/ subdirectory
+                    if "templates" in file_path_obj.parts:
+                        # Remove everything up to and including "templates/"
+                        parts = file_path_obj.parts
+                        templates_idx = parts.index("templates")
+                        rel_path = str(Path(*parts[templates_idx + 1:]))
+                    else:
+                        # File is in template repo root, use relative path from repo root
+                        rel_path = os.path.relpath(file_path, self.template_repo)
+                    
+                    relative_files.append(rel_path)
 
         return relative_files
+
+    def debug_discover(self, component: str) -> None:
+        """Debug component file discovery with verbose output"""
+        try:
+            print(f"=== DEBUG DISCOVERY: {component} ===")
+            files = self.discover_files(component, debug=True)
+            print(f"[DEBUG] Final result: {len(files)} files discovered")
+            for i, file in enumerate(files, 1):
+                print(f"[DEBUG] {i}. {file}")
+            print("=== END DEBUG ===")
+        except Exception as e:
+            print(f"[DEBUG] Error during discovery: {e}")
+            import traceback
+            traceback.print_exc()
 
     def install_component(self, component: str, force: bool = False) -> bool:
         """Install a specific component"""
@@ -357,8 +396,19 @@ class InfrastructureBootstrap:
                         success = False
                         continue
                 else:
-                    # For base components, source is in template repository
-                    src_path = self.template_repo / rel_file
+                    # For base components, reconstruct the correct source path
+                    # First try in templates/ subdirectory, then in root
+                    src_path_templates = self.template_repo / "templates" / rel_file
+                    src_path_root = self.template_repo / rel_file
+                    
+                    if src_path_templates.exists():
+                        src_path = src_path_templates
+                    elif src_path_root.exists():
+                        src_path = src_path_root
+                    else:
+                        print(f"  error: Could not find source file for {rel_file}")
+                        success = False
+                        continue
 
                 original_target_path = self.target_dir / rel_file
 
@@ -498,8 +548,10 @@ class InfrastructureBootstrap:
 
     def _should_merge_file(self, src_path: Path, target_path: Path) -> bool:
         """Check if a file should be merged instead of copied"""
-        # Special case: guardrails example files should merge into main guardrails.yaml
+        # Special case: example files should merge/rename to main files
         if src_path.name.startswith('guardrails.') and src_path.name.endswith('.example.yaml'):
+            return True
+        if src_path.name.endswith('.example.yaml') or src_path.name.endswith('.yaml.example'):
             return True
 
         # Merge YAML files with specific names when target exists
@@ -511,26 +563,43 @@ class InfrastructureBootstrap:
         # Special case: guardrails example files merge into main guardrails.yaml
         if src_path.name.startswith('guardrails.') and src_path.name.endswith('.example.yaml'):
             return Path(self.target_dir) / '.ai/guardrails.yaml'
+        
+        # General case: .example files should install without .example suffix
+        if src_path.name.endswith('.example.yaml'):
+            base_name = src_path.name.replace('.example.yaml', '.yaml')
+            return original_target_path.parent / base_name
+        if src_path.name.endswith('.yaml.example'):
+            base_name = src_path.name.replace('.yaml.example', '.yaml')
+            return original_target_path.parent / base_name
 
         return original_target_path
 
     def _merge_yaml_file(self, src_path: Path, target_path: Path):
-        """Merge YAML files by combining their contents"""
+        """Merge YAML/JSON files by combining their contents while preserving format"""
         try:
+            # Determine if target file is JSON or YAML based on extension
+            is_json = target_path.suffix.lower() == '.json'
+            
             # Load existing target file
             with open(target_path) as f:
-                target_data = yaml.safe_load(f) or {}
+                if is_json:
+                    target_data = json.load(f)
+                else:
+                    target_data = yaml.safe_load(f) or {}
 
-            # Load source file to merge
+            # Load source file to merge (assume YAML for source)
             with open(src_path) as f:
                 source_data = yaml.safe_load(f) or {}
 
             # Deep merge the dictionaries
             merged_data = self._deep_merge_dict(target_data, source_data)
 
-            # Write back the merged result
+            # Write back the merged result in the original format
             with open(target_path, 'w') as f:
-                yaml.dump(merged_data, f, default_flow_style=False, sort_keys=False)
+                if is_json:
+                    json.dump(merged_data, f, indent=2, sort_keys=False)
+                else:
+                    yaml.dump(merged_data, f, default_flow_style=False, sort_keys=False)
 
         except Exception as e:
             # Fallback to copy if merge fails
@@ -701,8 +770,13 @@ class InfrastructureBootstrap:
                     else:
                         src_path = self.template_repo / rel_file
 
-                    # Check target path
-                    target_path = self.target_dir / rel_file
+                    # Get the actual target path (handles .example renaming)
+                    original_target_path = self.target_dir / rel_file
+                    if src_path and self._should_merge_file(src_path, original_target_path):
+                        target_path = self._get_merge_target_path(src_path, original_target_path)
+                    else:
+                        target_path = original_target_path
+                        
                     if src_path and src_path.exists() and not target_path.exists():
                         missing_files.append(rel_file)
 
@@ -752,7 +826,20 @@ class InfrastructureBootstrap:
                 installed_count = 0
 
                 for rel_file in files:
-                    target_path = self.target_dir / rel_file
+                    # Determine source path for merge logic
+                    if self._is_plugin_component(component):
+                        plugin_path = self._get_plugin_path_for_component(component)
+                        src_path = plugin_path / rel_file if plugin_path else None
+                    else:
+                        src_path = self.template_repo / rel_file
+                    
+                    # Get the actual target path (handles .example renaming)
+                    original_target_path = self.target_dir / rel_file
+                    if src_path and self._should_merge_file(src_path, original_target_path):
+                        target_path = self._get_merge_target_path(src_path, original_target_path)
+                    else:
+                        target_path = original_target_path
+                        
                     if target_path.exists():
                         installed_count += 1
 
@@ -1353,6 +1440,10 @@ def main():
     discover_parser = subparsers.add_parser('discover', help='Show what files would be installed')
     discover_parser.add_argument('component', help='Component to analyze')
 
+    # Debug discovery with verbose output
+    debug_discover_parser = subparsers.add_parser('debug-discover', help='Debug component file discovery with verbose output')
+    debug_discover_parser.add_argument('component', help='Component to debug')
+
     args = parser.parse_args()
 
     try:
@@ -1407,6 +1498,8 @@ def main():
             print("Pre-commit configuration updated")
         elif args.command == 'discover':
             bootstrap.list_discovered_files(args.component)
+        elif args.command == 'debug-discover':
+            bootstrap.debug_discover(args.component)
         else:
             parser.print_help()
 

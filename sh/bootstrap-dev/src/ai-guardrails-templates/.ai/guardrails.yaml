@@ -24,6 +24,18 @@ generic:
 # Pre-commit hook configuration (optional)
 # Uncomment and customize the section below to disable specific language packs
 # Example: disable Python linting in a Rust-only project
-# precommit:
-#   disabled_languages: ["python", "node", "java"]  # Disable hooks containing these languages
-#   disabled_hooks: ["lang-test-quick"]             # Disable specific hook IDs
+precommit:
+  # Disable specific hooks by ID
+  disabled_hooks:
+    # - lang-lint          # Disable language-specific linting
+    # - lang-test-quick     # Disable quick language tests
+    # - ai-envelope-local   # Disable AI envelope local checks
+  
+  # Disable hooks by language/technology  
+  disabled_languages:
+    # - python              # Disable all Python-related hooks
+    # - node                # Disable all Node.js-related hooks
+    # - go                  # Disable all Go-related hooks
+    # - rust                # Disable all Rust-related hooks
+    # - java                # Disable all Java-related hooks
+    # - dotnet              # Disable all .NET-related hooks
