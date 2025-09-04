@@ -14,6 +14,35 @@ import sys
 from pathlib import Path
 from typing import Dict, List
 
+class Colors:
+    """Professional ANSI color codes for CLI output"""
+    GREEN = '\033[32m'
+    RED = '\033[31m'
+    YELLOW = '\033[33m'
+    BLUE = '\033[34m'
+    BOLD = '\033[1m'
+    RESET = '\033[0m'
+
+    @classmethod
+    def ok(cls, text):
+        return f"{cls.GREEN}{text}{cls.RESET}"
+
+    @classmethod
+    def error(cls, text):
+        return f"{cls.RED}{text}{cls.RESET}"
+
+    @classmethod
+    def warn(cls, text):
+        return f"{cls.YELLOW}{text}{cls.RESET}"
+
+    @classmethod
+    def info(cls, text):
+        return f"{cls.BLUE}{text}{cls.RESET}"
+
+    @classmethod
+    def bold(cls, text):
+        return f"{cls.BOLD}{text}{cls.RESET}"
+
 class InfrastructureBootstrap:
     def __init__(self, target_dir: Path = None):
         """Initialize the bootstrap system"""
@@ -35,18 +64,18 @@ class InfrastructureBootstrap:
             # For fresh projects, use the template manifest from this repository
             # Look for the manifest in the current repository structure
             template_manifest_path = None
-            
+
             # Try to find the template manifest in common locations
             search_paths = [
                 Path(__file__).parent.parent / "src" / "installation-manifest.yaml",  # When running from this repo
                 self.target_dir / "src" / "installation-manifest.yaml",  # Target location
             ]
-            
+
             for path in search_paths:
                 if path.exists():
                     template_manifest_path = path
                     break
-            
+
             if template_manifest_path:
                 # Load from template
                 with open(template_manifest_path) as f:
@@ -54,7 +83,7 @@ class InfrastructureBootstrap:
             else:
                 # Create minimal default manifest for bootstrapping
                 return self._create_minimal_manifest()
-        
+
         with open(self.manifest_path) as f:
             return yaml.safe_load(f)
 
@@ -202,15 +231,15 @@ class InfrastructureBootstrap:
     def show_state(self):
         """Show current installation state"""
         state = self._load_state()
-        
-        print("AI Guardrails Installation State")
-        print("=" * 50)
-        
+
+        print(Colors.bold("AI Guardrails Installation State"))
+        print(Colors.info("=" * 50))
+
         if state.get('installed_profile'):
             print(f"Profile: {state['installed_profile']}")
         else:
             print("Profile: Not set (manual installation)")
-        
+
         installed_components = state.get('installed_components', [])
         if installed_components:
             print(f"Components ({len(installed_components)}):")
@@ -218,7 +247,7 @@ class InfrastructureBootstrap:
                 print(f"  - {component}")
         else:
             print("Components: None tracked (run 'init' to establish state)")
-        
+
         history = state.get('installation_history', [])
         if history:
             print(f"\nInstallation History ({len(history)} entries):")
@@ -231,7 +260,7 @@ class InfrastructureBootstrap:
                     print(f"  {timestamp}: Installed component '{entry.get('component')}'")
             if len(history) > 5:
                 print(f"  ... and {len(history) - 5} more entries")
-        
+
         print()
 
     def _is_plugin_component(self, component: str) -> bool:
@@ -373,27 +402,27 @@ class InfrastructureBootstrap:
         """Customize .pre-commit-config.yaml based on guardrails.yaml settings"""
         guardrails_path = self.target_dir / ".ai" / "guardrails.yaml"
         precommit_path = self.target_dir / ".pre-commit-config.yaml"
-        
+
         if not guardrails_path.exists() or not precommit_path.exists():
             return
-        
+
         try:
             # Load guardrails config
             with open(guardrails_path, 'r') as f:
                 guardrails_config = yaml.safe_load(f) or {}
-            
+
             # Load current pre-commit config
             with open(precommit_path, 'r') as f:
                 precommit_config = yaml.safe_load(f) or {}
-            
+
             # Check if there's a precommit configuration section
             precommit_settings = guardrails_config.get('precommit', {})
             disabled_hooks = precommit_settings.get('disabled_hooks', [])
             disabled_languages = precommit_settings.get('disabled_languages', [])
-            
+
             if not disabled_hooks and not disabled_languages:
                 return  # Nothing to customize
-            
+
             # Process repositories and hooks
             updated = False
             for repo in precommit_config.get('repos', []):
@@ -401,43 +430,43 @@ class InfrastructureBootstrap:
                     # Filter out disabled hooks
                     original_hooks = repo.get('hooks', [])
                     filtered_hooks = []
-                    
+
                     for hook in original_hooks:
                         hook_id = hook.get('id', '')
                         hook_name = hook.get('name', '')
                         hook_entry = hook.get('entry', '')
-                        
+
                         # Check if hook should be disabled
                         should_disable = False
-                        
+
                         # Disable by hook ID
                         if hook_id in disabled_hooks:
                             should_disable = True
                             print(f"  Disabling pre-commit hook: {hook_id}")
-                        
+
                         # Disable by language (check if hook name, ID, or entry contains language)
                         for lang in disabled_languages:
                             lang_lower = lang.lower()
-                            if (lang_lower in hook_name.lower() or 
+                            if (lang_lower in hook_name.lower() or
                                 lang_lower in hook_id.lower() or
                                 lang_lower in hook_entry.lower()):
                                 should_disable = True
                                 print(f"  Disabling {lang} hook: {hook_id} ({hook_name})")
                                 break
-                        
+
                         if not should_disable:
                             filtered_hooks.append(hook)
                         else:
                             updated = True
-                    
+
                     repo['hooks'] = filtered_hooks
-            
+
             # Save updated config if changes were made
             if updated:
                 with open(precommit_path, 'w') as f:
                     yaml.dump(precommit_config, f, default_flow_style=False, sort_keys=False)
                 print(f"  Customized .pre-commit-config.yaml based on guardrails settings")
-            
+
         except Exception as e:
             print(f"Warning: Could not customize pre-commit config: {e}")
 
@@ -446,7 +475,7 @@ class InfrastructureBootstrap:
         try:
             # First customize the config based on guardrails.yaml settings
             self._customize_precommit_config()
-            
+
             # Install pre-commit if not already installed
             print("Installing pre-commit hooks...")
             subprocess.run([
@@ -599,8 +628,8 @@ class InfrastructureBootstrap:
 
     def doctor(self, focus: str = "all") -> bool:
         """Diagnostic workflow - validate installation integrity"""
-        print("AI Guardrails Doctor - Installation Diagnostics")
-        print("=" * 50)
+        print(Colors.bold("AI Guardrails Doctor - Installation Diagnostics"))
+        print(Colors.info("=" * 50))
 
         issues_found = 0
         merged_manifest = self._get_merged_manifest()
@@ -613,12 +642,12 @@ class InfrastructureBootstrap:
             issues_found += self._doctor_component_status()
             issues_found += self._doctor_environment()
 
-        print("\n" + "=" * 50)
+        print("\n" + Colors.info("=" * 50))
         if issues_found == 0:
-            print("All checks passed - installation is healthy!")
+            print(Colors.ok("All checks passed - installation is healthy!"))
             return True
         else:
-            print(f"Found {issues_found} issues - run 'ensure --apply' to fix")
+            print(Colors.error(f"Found {issues_found} issues - run 'ensure --apply' to fix"))
             return False
 
     def _doctor_yaml_structure(self) -> int:
@@ -643,12 +672,12 @@ class InfrastructureBootstrap:
                         import json
                         with open(full_path) as f:
                             json.load(f)
-                    print(f"  [OK] {file_path}: Valid syntax")
+                    print(f"  {Colors.ok('[OK]')} {file_path}: Valid syntax")
                 except Exception as e:
-                    print(f"  [ERROR] {file_path}: Invalid syntax - {e}")
+                    print(f"  {Colors.error('[ERROR]')} {file_path}: Invalid syntax - {e}")
                     issues += 1
             else:
-                print(f"  [WARN] {file_path}: Missing ({description})")
+                print(f"  {Colors.warn('[WARN]')} {file_path}: Missing ({description})")
                 issues += 1
 
         return issues
@@ -678,17 +707,17 @@ class InfrastructureBootstrap:
                         missing_files.append(rel_file)
 
                 if missing_files:
-                    print(f"  [WARN] {component}: Missing {len(missing_files)} files")
+                    print(f"  {Colors.warn('[WARN]')} {component}: Missing {len(missing_files)} files")
                     for missing in missing_files[:3]:  # Show first 3
                         print(f"    - {missing}")
                     if len(missing_files) > 3:
                         print(f"    ... and {len(missing_files) - 3} more")
                     issues += len(missing_files)
                 else:
-                    print(f"  [OK] {component}: All files present")
+                    print(f"  {Colors.ok('[OK]')} {component}: All files present")
 
             except Exception as e:
-                print(f"  [ERROR] {component}: Cannot check - {e}")
+                print(f"  {Colors.error('[ERROR]')} {component}: Cannot check - {e}")
                 issues += 1
 
         return issues
@@ -697,27 +726,27 @@ class InfrastructureBootstrap:
         """Check component installation status"""
         print("\nComponent Status Check:")
         issues = 0
-        
+
         # Load state to see what components should be installed
         state = self._load_state()
         installed_components = state.get('installed_components', [])
-        
+
         # If no state exists, check all components (backward compatibility)
         if not installed_components:
-            print("  [WARN] No installation state found - checking all available components")
+            print(f"  {Colors.warn('[WARN]')} No installation state found - checking all available components")
             print("  Run 'ai-guardrails init' to establish proper state tracking")
             merged_manifest = self._get_merged_manifest()
             components_to_check = merged_manifest['components'].keys()
         else:
             components_to_check = installed_components
-        
+
         merged_manifest = self._get_merged_manifest()
 
         for component in components_to_check:
             # Skip if component doesn't exist in manifest
             if component not in merged_manifest['components']:
                 continue
-                
+
             try:
                 files = self.discover_files(component)
                 installed_count = 0
@@ -728,16 +757,16 @@ class InfrastructureBootstrap:
                         installed_count += 1
 
                 if installed_count == 0:
-                    print(f"  [ERROR] {component}: Not installed (0/{len(files)} files)")
+                    print(f"  {Colors.error('[ERROR]')} {component}: Not installed (0/{len(files)} files)")
                     issues += 1
                 elif installed_count < len(files):
-                    print(f"  [WARN] {component}: Partially installed ({installed_count}/{len(files)} files)")
+                    print(f"  {Colors.warn('[WARN]')} {component}: Partially installed ({installed_count}/{len(files)} files)")
                     issues += 1
                 else:
-                    print(f"  [OK] {component}: Fully installed ({installed_count}/{len(files)} files)")
+                    print(f"  {Colors.ok('[OK]')} {component}: Fully installed ({installed_count}/{len(files)} files)")
 
             except Exception as e:
-                print(f"  [ERROR] {component}: Cannot analyze - {e}")
+                print(f"  {Colors.error('[ERROR]')} {component}: Cannot analyze - {e}")
                 issues += 1
 
         return issues
@@ -749,27 +778,27 @@ class InfrastructureBootstrap:
 
         # Check git repository
         if (self.target_dir / ".git").exists():
-            print("  [OK] Git repository detected")
+            print(f"  {Colors.ok('[OK]')} Git repository detected")
         else:
-            print("  [WARN] No git repository (some features may not work)")
+            print(f"  {Colors.warn('[WARN]')} No git repository (some features may not work)")
             issues += 1
 
         # Check Python
         import sys
         python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
-        print(f"  [OK] Python {python_version} available")
+        print(f"  {Colors.ok('[OK]')} Python {python_version} available")
 
         # Check pre-commit
         try:
             result = subprocess.run(['pre-commit', '--version'],
                                  capture_output=True, text=True, check=False)
             if result.returncode == 0:
-                print(f"  [OK] Pre-commit available: {result.stdout.strip()}")
+                print(f"  {Colors.ok('[OK]')} Pre-commit available: {result.stdout.strip()}")
             else:
-                print("  [WARN] Pre-commit not installed")
+                print(f"  {Colors.warn('[WARN]')} Pre-commit not installed")
                 issues += 1
         except FileNotFoundError:
-            print("  [WARN] Pre-commit not installed")
+            print(f"  {Colors.warn('[WARN]')} Pre-commit not installed")
             issues += 1
 
         return issues
@@ -840,8 +869,8 @@ class InfrastructureBootstrap:
 
             # If no state exists, check all components (backward compatibility)
             if not installed_components:
-                print("⚠️  No installation state found - checking all available components")
-                print("💡 Run 'ai-guardrails init' to establish proper state tracking")
+                print(f"  {Colors.warn('[WARN]')} No installation state found - checking all available components")
+                print(f"  {Colors.info('[INFO]')} Run 'ai-guardrails init' to establish proper state tracking")
 
             merged_manifest = self._get_merged_manifest()
             components_to_check = installed_components if installed_components else merged_manifest['components'].keys()
@@ -901,14 +930,14 @@ class InfrastructureBootstrap:
     def ensure(self, apply: bool = False, focus: str = "all", yaml_input: str = None, component_filter: str = None) -> bool:
         """Ensure workflow - repair/install missing components"""
         if apply:
-            print("🔧 AI Guardrails Ensure - Applying Repairs")
+            print(Colors.bold("AI Guardrails Ensure - Applying Repairs"))
         else:
-            print("🔍 AI Guardrails Ensure - Dry Run (use --apply to fix)")
-        print("=" * 50)
+            print(Colors.bold("AI Guardrails Ensure - Dry Run (use --apply to fix)"))
+        print(Colors.info("=" * 50))
 
         # Handle YAML input from stdin or detect YAML focus
         if yaml_input:
-            print("📄 Processing YAML repair manifest...")
+            print(Colors.info("Processing YAML repair manifest..."))
             try:
                 # Try to parse YAML input
                 if yaml_input.strip().startswith('{'):
@@ -923,10 +952,10 @@ class InfrastructureBootstrap:
                     repairs = repair_data['repair_manifest']['repairs']
                     return self._apply_repair_manifest(repairs, apply)
                 else:
-                    print("❌ Invalid repair manifest format - missing 'repair_manifest' key")
+                    print(f"{Colors.error('[ERROR]')} Invalid repair manifest format - missing 'repair_manifest' key")
                     return False
             except (yaml.YAMLError, json.JSONDecodeError) as e:
-                print(f"❌ Failed to parse YAML input: {e}")
+                print(f"{Colors.error('[ERROR]')} Failed to parse YAML input: {e}")
                 return False
 
         # Standard workflow - run doctor first to identify issues
@@ -934,14 +963,14 @@ class InfrastructureBootstrap:
         issues_found = not self.doctor(focus)
 
         if not issues_found:
-            print("\n✅ No issues found - nothing to repair!")
+            print(f"\n{Colors.ok('[OK]')} No issues found - nothing to repair!")
             return True
 
         if not apply:
-            print(f"\n💡 Run with --apply to automatically fix issues")
+            print(f"\n{Colors.info('[INFO]')} Run with --apply to automatically fix issues")
             return False
 
-        print(f"\n🔧 Applying repairs...")
+        print(f"\n{Colors.info('[INFO]')} Applying repairs...")
         repairs_successful = 0
 
         if focus == "yaml" or focus == "all":
@@ -951,16 +980,16 @@ class InfrastructureBootstrap:
             repairs_successful += self._ensure_components(apply)
             repairs_successful += self._ensure_environment(apply)
 
-        print(f"\n✅ Applied {repairs_successful} repairs successfully")
+        print(f"\n{Colors.ok('[OK]')} Applied {repairs_successful} repairs successfully")
         return True
 
     def _apply_repair_manifest(self, repairs: list, apply: bool) -> bool:
         """Apply repairs from a YAML manifest"""
         if not apply:
-            print(f"📋 Would apply {len(repairs)} repairs:")
+            print(f"{Colors.info('[INFO]')} Would apply {len(repairs)} repairs:")
             for repair in repairs:
                 print(f"  - {repair['action']}: {repair['path']}")
-            print("\n💡 Use --apply to execute these repairs")
+            print(f"\n{Colors.info('[INFO]')} Use --apply to execute these repairs")
             return False
 
         repairs_successful = 0
@@ -982,25 +1011,25 @@ class InfrastructureBootstrap:
                     self._create_default_plugin_manifest(plugin)
                     repairs_successful += 1
                 elif repair['action'] == 'fix_yaml_syntax':
-                    print(f"  ⚠️  Cannot auto-fix YAML syntax in: {repair['path']}")
+                    print(f"  {Colors.warn('[WARN]')} Cannot auto-fix YAML syntax in: {repair['path']}")
                     print(f"     Error: {repair.get('error', 'Unknown')}")
                     print(f"     Please fix manually")
                 else:
-                    print(f"  ❌ Unknown repair action: {repair['action']}")
+                    print(f"  {Colors.error('[ERROR]')} Unknown repair action: {repair['action']}")
             except Exception as e:
-                print(f"  ❌ Failed to apply repair {repair['action']}: {e}")
+                print(f"  {Colors.error('[ERROR]')} Failed to apply repair {repair['action']}: {e}")
 
-        print(f"\n✅ Applied {repairs_successful}/{len(repairs)} repairs successfully")
+        print(f"\n{Colors.ok('[OK]')} Applied {repairs_successful}/{len(repairs)} repairs successfully")
         return repairs_successful == len(repairs)
 
     def init(self, profile: str = "auto", dry_run: bool = False) -> bool:
         """One-click installation with smart defaults"""
-        print("AI Guardrails Init - One-Click Installation")
-        print("=" * 50)
+        print(Colors.bold("AI Guardrails Init - One-Click Installation"))
+        print(Colors.info("=" * 50))
 
         # Check if we need to bootstrap from scratch
         if not self.template_repo.exists() and not self.manifest_path.exists():
-            print("Bootstrapping from scratch...")
+            print(Colors.info("Bootstrapping from scratch..."))
             if not self._bootstrap_from_remote():
                 print("ERROR: Failed to bootstrap - unable to fetch AI Guardrails templates")
                 return False
@@ -1051,24 +1080,24 @@ class InfrastructureBootstrap:
         import subprocess
         import tempfile
         import shutil
-        
+
         print("Fetching AI Guardrails templates...")
-        
+
         try:
             # Create temporary directory for cloning
             with tempfile.TemporaryDirectory() as temp_dir:
                 temp_path = Path(temp_dir)
-                
+
                 # Clone the repository (using sparse checkout for efficiency)
                 repo_url = "https://github.com/your-org/ai-guardrails-bootstrap.git"  # Update with actual repo
-                
+
                 # For now, let's try to copy from the local repository if we're in it
                 # This handles the case where the user is running from the bootstrap repo
                 current_script_dir = Path(__file__).parent.parent
-                
+
                 if (current_script_dir / "src" / "installation-manifest.yaml").exists():
                     print("Using local templates...")
-                    
+
                     # Copy manifest
                     src_dir = self.target_dir / "src"
                     src_dir.mkdir(parents=True, exist_ok=True)
@@ -1076,7 +1105,7 @@ class InfrastructureBootstrap:
                         current_script_dir / "src" / "installation-manifest.yaml",
                         src_dir / "installation-manifest.yaml"
                     )
-                    
+
                     # Copy templates
                     if (current_script_dir / "src" / "ai-guardrails-templates").exists():
                         if self.template_repo.exists():
@@ -1085,7 +1114,7 @@ class InfrastructureBootstrap:
                             current_script_dir / "src" / "ai-guardrails-templates",
                             self.template_repo
                         )
-                    
+
                     print("Templates copied successfully")
                     return True
                 else:
@@ -1093,7 +1122,7 @@ class InfrastructureBootstrap:
                     print("ERROR: Remote fetching not implemented yet")
                     print("Please run this command from the AI Guardrails bootstrap repository")
                     return False
-                    
+
         except Exception as e:
             print(f"ERROR: Failed to bootstrap templates: {e}")
             return False
@@ -1200,7 +1229,7 @@ class InfrastructureBootstrap:
         for file_path, component in yaml_component_map.items():
             full_path = self.target_dir / file_path
             if not full_path.exists():
-                print(f"  🔧 Installing missing {file_path}")
+                print(f"  {Colors.info('[INFO]')} Installing missing {file_path}")
                 if self.install_component(component, force=False):
                     repairs += 1
 
@@ -1225,12 +1254,12 @@ class InfrastructureBootstrap:
                         missing_files.append(rel_file)
 
                 if missing_files:
-                    print(f"  🔧 Reinstalling {component} (missing {len(missing_files)} files)")
+                    print(f"  {Colors.info('[INFO]')} Reinstalling {component} (missing {len(missing_files)} files)")
                     if self.install_component(component, force=False):
                         repairs += 1
 
             except Exception as e:
-                print(f"  ❌ Cannot repair {component}: {e}")
+                print(f"  {Colors.error('[ERROR]')} Cannot repair {component}: {e}")
 
         return repairs
 
@@ -1246,14 +1275,14 @@ class InfrastructureBootstrap:
             subprocess.run(['pre-commit', '--version'],
                          capture_output=True, check=True)
         except (FileNotFoundError, subprocess.CalledProcessError):
-            print("  🔧 Installing pre-commit")
+            print(f"  {Colors.info('[INFO]')} Installing pre-commit")
             try:
                 subprocess.run([
                     'python3', '-m', 'pip', 'install', 'pre-commit'
                 ], check=True, capture_output=True)
                 repairs += 1
             except subprocess.CalledProcessError as e:
-                print(f"  ❌ Failed to install pre-commit: {e}")
+                print(f"  {Colors.error('[ERROR]')} Failed to install pre-commit: {e}")
 
         return repairs
 
