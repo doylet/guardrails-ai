@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """Demo harness that executes demos through the production interface."""
 import argparse, subprocess, sys, json, os, time, yaml
+from pathlib import Path
 
-DEFAULT_CLI = os.environ.get("DECKGEN_CLI", "deckgen")
+# Use the bridge by default, but allow override
+SCRIPT_DIR = Path(__file__).parent
+DECKGEN_BRIDGE = str(SCRIPT_DIR / "deckgen_bridge.py")
+DEFAULT_CLI = os.environ.get("DECKGEN_CLI", f"python {DECKGEN_BRIDGE}")
 
 def load_yaml(path):
     with open(path) as f:
@@ -17,12 +21,19 @@ def cli_cmd(sc):
         "--audience", sc.get("audience","General"),
         "--slides", ",".join(sc.get("slide_types", [])) or "Narrative",
         "--seed", str(sc.get("seed", 0)),
+        "--json",  # Request JSON output for parsing
     ]
     for k, v in (sc.get("feature_flags") or {}).items():
         if v: args += ["--flag", k]
     prof = sc.get("provider_profile") or {}
     if prof.get("model"): args += ["--model", prof["model"]]
     if prof.get("temperature") is not None: args += ["--temperature", str(prof["temperature"])]
+
+    # Add output directory if specified
+    output_dir = sc.get("output_dir")
+    if output_dir:
+        args += ["--output-dir", output_dir]
+
     return [DEFAULT_CLI, "build"] + args
 
 def run_cli(cmd):
@@ -35,6 +46,20 @@ def run_cli(cmd):
 
 def parse_quality(stdout):
     rep = {"layout_satisfaction": None, "placeholders_found": 0, "elements_per_slide": None}
+
+    # Try to parse JSON response from bridge first
+    try:
+        # Look for JSON output from the bridge
+        for line in stdout.splitlines():
+            line = line.strip()
+            if line.startswith('{') and '"quality"' in line:
+                bridge_output = json.loads(line)
+                if "quality" in bridge_output:
+                    return bridge_output["quality"]
+    except json.JSONDecodeError:
+        pass
+
+    # Fallback to original parsing for backwards compatibility
     for line in stdout.splitlines():
         s = line.strip()
         if s.startswith("{") and '"satisfaction"' in s:
