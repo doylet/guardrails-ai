@@ -30,9 +30,60 @@ class InfrastructureBootstrap:
         self._discover_plugins()
 
     def _load_manifest(self) -> Dict:
-        """Load installation manifest"""
+        """Load installation manifest or create default if it doesn't exist"""
+        if not self.manifest_path.exists():
+            # For fresh projects, use the template manifest from this repository
+            # Look for the manifest in the current repository structure
+            template_manifest_path = None
+            
+            # Try to find the template manifest in common locations
+            search_paths = [
+                Path(__file__).parent.parent / "src" / "installation-manifest.yaml",  # When running from this repo
+                self.target_dir / "src" / "installation-manifest.yaml",  # Target location
+            ]
+            
+            for path in search_paths:
+                if path.exists():
+                    template_manifest_path = path
+                    break
+            
+            if template_manifest_path:
+                # Load from template
+                with open(template_manifest_path) as f:
+                    return yaml.safe_load(f)
+            else:
+                # Create minimal default manifest for bootstrapping
+                return self._create_minimal_manifest()
+        
         with open(self.manifest_path) as f:
             return yaml.safe_load(f)
+
+    def _create_minimal_manifest(self) -> Dict:
+        """Create a minimal manifest for bootstrapping"""
+        return {
+            'version': '1.0.0',
+            'name': 'ai-guardrails-installation',
+            'components': {
+                'core': {
+                    'description': 'Core AI guardrails configuration',
+                    'file_patterns': ['.ai/*.yaml', '.ai/*.json']
+                }
+            },
+            'profiles': {
+                'minimal': {
+                    'description': 'Minimal profile for bootstrapping',
+                    'components': ['core']
+                },
+                'standard': {
+                    'description': 'Standard profile',
+                    'components': ['core']
+                }
+            },
+            'settings': {
+                'template_source_directory': 'src/ai-guardrails-templates',
+                'plugin_directories': ['src/plugins']
+            }
+        }
 
     def _discover_plugins(self) -> Dict:
         """Discover and load plugin manifests"""
@@ -929,6 +980,13 @@ class InfrastructureBootstrap:
         print("🚀 AI Guardrails Init - One-Click Installation")
         print("=" * 50)
 
+        # Check if we need to bootstrap from scratch
+        if not self.template_repo.exists() and not self.manifest_path.exists():
+            print("🔄 Bootstrapping from scratch...")
+            if not self._bootstrap_from_remote():
+                print("❌ Failed to bootstrap - unable to fetch AI Guardrails templates")
+                return False
+
         # Auto-detect environment if profile is 'auto'
         if profile == "auto":
             profile = self._detect_best_profile()
@@ -969,6 +1027,58 @@ class InfrastructureBootstrap:
             print(f"\n❌ Installation failed - run 'ai-guardrails doctor' for diagnostics")
 
         return success
+
+    def _bootstrap_from_remote(self) -> bool:
+        """Bootstrap AI Guardrails templates from remote repository"""
+        import subprocess
+        import tempfile
+        import shutil
+        
+        print("📥 Fetching AI Guardrails templates...")
+        
+        try:
+            # Create temporary directory for cloning
+            with tempfile.TemporaryDirectory() as temp_dir:
+                temp_path = Path(temp_dir)
+                
+                # Clone the repository (using sparse checkout for efficiency)
+                repo_url = "https://github.com/your-org/ai-guardrails-bootstrap.git"  # Update with actual repo
+                
+                # For now, let's try to copy from the local repository if we're in it
+                # This handles the case where the user is running from the bootstrap repo
+                current_script_dir = Path(__file__).parent.parent
+                
+                if (current_script_dir / "src" / "installation-manifest.yaml").exists():
+                    print("📋 Using local templates...")
+                    
+                    # Copy manifest
+                    src_dir = self.target_dir / "src"
+                    src_dir.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(
+                        current_script_dir / "src" / "installation-manifest.yaml",
+                        src_dir / "installation-manifest.yaml"
+                    )
+                    
+                    # Copy templates
+                    if (current_script_dir / "src" / "ai-guardrails-templates").exists():
+                        if self.template_repo.exists():
+                            shutil.rmtree(self.template_repo)
+                        shutil.copytree(
+                            current_script_dir / "src" / "ai-guardrails-templates",
+                            self.template_repo
+                        )
+                    
+                    print("✅ Templates copied successfully")
+                    return True
+                else:
+                    # TODO: Implement remote fetching
+                    print("❌ Remote fetching not implemented yet")
+                    print("💡 Please run this command from the AI Guardrails bootstrap repository")
+                    return False
+                    
+        except Exception as e:
+            print(f"❌ Failed to bootstrap templates: {e}")
+            return False
 
     def _detect_best_profile(self) -> str:
         """Auto-detect the best installation profile based on environment"""

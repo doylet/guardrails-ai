@@ -25,6 +25,6 @@ generic:
     not found')
 
 # Pre-commit hook configuration (optional)
-precommit:
-  # disabled_languages: ["python"]  # Disable all hooks containing these languages
-  disabled_hooks: ["lang-test-quick"]     # Disable specific hook IDs
+# precommit:
+#   disabled_languages: ["python"]  # Disable all hooks containing these languages
+#   disabled_hooks: ["lang-test-quick"]     # Disable specific hook IDs
