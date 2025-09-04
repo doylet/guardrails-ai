@@ -202,36 +202,36 @@ class InfrastructureBootstrap:
     def show_state(self):
         """Show current installation state"""
         state = self._load_state()
-
-        print("🔍 AI Guardrails Installation State")
+        
+        print("AI Guardrails Installation State")
         print("=" * 50)
-
+        
         if state.get('installed_profile'):
-            print(f"📦 Profile: {state['installed_profile']}")
+            print(f"Profile: {state['installed_profile']}")
         else:
-            print("📦 Profile: Not set (manual installation)")
-
+            print("Profile: Not set (manual installation)")
+        
         installed_components = state.get('installed_components', [])
         if installed_components:
-            print(f"🧩 Components ({len(installed_components)}):")
+            print(f"Components ({len(installed_components)}):")
             for component in sorted(installed_components):
-                print(f"  • {component}")
+                print(f"  - {component}")
         else:
-            print("🧩 Components: None tracked (run 'init' to establish state)")
-
+            print("Components: None tracked (run 'init' to establish state)")
+        
         history = state.get('installation_history', [])
         if history:
-            print(f"\n📋 Installation History ({len(history)} entries):")
+            print(f"\nInstallation History ({len(history)} entries):")
             for entry in history[-5:]:  # Show last 5 entries
                 timestamp = entry.get('timestamp', 'Unknown')
                 action = entry.get('action', 'Unknown')
                 if action == 'install_profile':
-                    print(f"  • {timestamp}: Installed profile '{entry.get('profile')}' with {len(entry.get('components', []))} components")
+                    print(f"  {timestamp}: Installed profile '{entry.get('profile')}' with {len(entry.get('components', []))} components")
                 elif action == 'install_component':
-                    print(f"  • {timestamp}: Installed component '{entry.get('component')}'")
+                    print(f"  {timestamp}: Installed component '{entry.get('component')}'")
             if len(history) > 5:
                 print(f"  ... and {len(history) - 5} more entries")
-
+        
         print()
 
     def _is_plugin_component(self, component: str) -> bool:
@@ -599,7 +599,7 @@ class InfrastructureBootstrap:
 
     def doctor(self, focus: str = "all") -> bool:
         """Diagnostic workflow - validate installation integrity"""
-        print("🔍 AI Guardrails Doctor - Installation Diagnostics")
+        print("AI Guardrails Doctor - Installation Diagnostics")
         print("=" * 50)
 
         issues_found = 0
@@ -615,15 +615,15 @@ class InfrastructureBootstrap:
 
         print("\n" + "=" * 50)
         if issues_found == 0:
-            print("✅ All checks passed - installation is healthy!")
+            print("All checks passed - installation is healthy!")
             return True
         else:
-            print(f"⚠️  Found {issues_found} issues - run 'ensure --apply' to fix")
+            print(f"Found {issues_found} issues - run 'ensure --apply' to fix")
             return False
 
     def _doctor_yaml_structure(self) -> int:
         """Validate YAML file structure and content"""
-        print("\n📋 YAML Structure Check:")
+        print("\nYAML Structure Check:")
         issues = 0
 
         yaml_files = [
@@ -643,19 +643,19 @@ class InfrastructureBootstrap:
                         import json
                         with open(full_path) as f:
                             json.load(f)
-                    print(f"  ✅ {file_path}: Valid syntax")
+                    print(f"  [OK] {file_path}: Valid syntax")
                 except Exception as e:
-                    print(f"  ❌ {file_path}: Invalid syntax - {e}")
+                    print(f"  [ERROR] {file_path}: Invalid syntax - {e}")
                     issues += 1
             else:
-                print(f"  ⚠️  {file_path}: Missing ({description})")
+                print(f"  [WARN] {file_path}: Missing ({description})")
                 issues += 1
 
         return issues
 
     def _doctor_file_integrity(self) -> int:
         """Check if all expected files are present"""
-        print("\n📁 File Integrity Check:")
+        print("\nFile Integrity Check:")
         issues = 0
         merged_manifest = self._get_merged_manifest()
 
@@ -678,28 +678,46 @@ class InfrastructureBootstrap:
                         missing_files.append(rel_file)
 
                 if missing_files:
-                    print(f"  ⚠️  {component}: Missing {len(missing_files)} files")
+                    print(f"  [WARN] {component}: Missing {len(missing_files)} files")
                     for missing in missing_files[:3]:  # Show first 3
                         print(f"    - {missing}")
                     if len(missing_files) > 3:
                         print(f"    ... and {len(missing_files) - 3} more")
                     issues += len(missing_files)
                 else:
-                    print(f"  ✅ {component}: All files present")
+                    print(f"  [OK] {component}: All files present")
 
             except Exception as e:
-                print(f"  ❌ {component}: Cannot check - {e}")
+                print(f"  [ERROR] {component}: Cannot check - {e}")
                 issues += 1
 
         return issues
 
     def _doctor_component_status(self) -> int:
         """Check component installation status"""
-        print("\n🧩 Component Status Check:")
+        print("\nComponent Status Check:")
         issues = 0
+        
+        # Load state to see what components should be installed
+        state = self._load_state()
+        installed_components = state.get('installed_components', [])
+        
+        # If no state exists, check all components (backward compatibility)
+        if not installed_components:
+            print("  [WARN] No installation state found - checking all available components")
+            print("  Run 'ai-guardrails init' to establish proper state tracking")
+            merged_manifest = self._get_merged_manifest()
+            components_to_check = merged_manifest['components'].keys()
+        else:
+            components_to_check = installed_components
+        
         merged_manifest = self._get_merged_manifest()
 
-        for component, config in merged_manifest['components'].items():
+        for component in components_to_check:
+            # Skip if component doesn't exist in manifest
+            if component not in merged_manifest['components']:
+                continue
+                
             try:
                 files = self.discover_files(component)
                 installed_count = 0
@@ -710,48 +728,48 @@ class InfrastructureBootstrap:
                         installed_count += 1
 
                 if installed_count == 0:
-                    print(f"  ❌ {component}: Not installed (0/{len(files)} files)")
+                    print(f"  [ERROR] {component}: Not installed (0/{len(files)} files)")
                     issues += 1
                 elif installed_count < len(files):
-                    print(f"  ⚠️  {component}: Partially installed ({installed_count}/{len(files)} files)")
+                    print(f"  [WARN] {component}: Partially installed ({installed_count}/{len(files)} files)")
                     issues += 1
                 else:
-                    print(f"  ✅ {component}: Fully installed ({installed_count}/{len(files)} files)")
+                    print(f"  [OK] {component}: Fully installed ({installed_count}/{len(files)} files)")
 
             except Exception as e:
-                print(f"  ❌ {component}: Cannot analyze - {e}")
+                print(f"  [ERROR] {component}: Cannot analyze - {e}")
                 issues += 1
 
         return issues
 
     def _doctor_environment(self) -> int:
         """Check environment and dependencies"""
-        print("\n🌍 Environment Check:")
+        print("\nEnvironment Check:")
         issues = 0
 
         # Check git repository
         if (self.target_dir / ".git").exists():
-            print("  ✅ Git repository detected")
+            print("  [OK] Git repository detected")
         else:
-            print("  ⚠️  No git repository (some features may not work)")
+            print("  [WARN] No git repository (some features may not work)")
             issues += 1
 
         # Check Python
         import sys
         python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
-        print(f"  ✅ Python {python_version} available")
+        print(f"  [OK] Python {python_version} available")
 
         # Check pre-commit
         try:
             result = subprocess.run(['pre-commit', '--version'],
                                  capture_output=True, text=True, check=False)
             if result.returncode == 0:
-                print(f"  ✅ Pre-commit available: {result.stdout.strip()}")
+                print(f"  [OK] Pre-commit available: {result.stdout.strip()}")
             else:
-                print("  ⚠️  Pre-commit not installed")
+                print("  [WARN] Pre-commit not installed")
                 issues += 1
         except FileNotFoundError:
-            print("  ⚠️  Pre-commit not installed")
+            print("  [WARN] Pre-commit not installed")
             issues += 1
 
         return issues
@@ -977,54 +995,54 @@ class InfrastructureBootstrap:
 
     def init(self, profile: str = "auto", dry_run: bool = False) -> bool:
         """One-click installation with smart defaults"""
-        print("🚀 AI Guardrails Init - One-Click Installation")
+        print("AI Guardrails Init - One-Click Installation")
         print("=" * 50)
 
         # Check if we need to bootstrap from scratch
         if not self.template_repo.exists() and not self.manifest_path.exists():
-            print("🔄 Bootstrapping from scratch...")
+            print("Bootstrapping from scratch...")
             if not self._bootstrap_from_remote():
-                print("❌ Failed to bootstrap - unable to fetch AI Guardrails templates")
+                print("ERROR: Failed to bootstrap - unable to fetch AI Guardrails templates")
                 return False
 
         # Auto-detect environment if profile is 'auto'
         if profile == "auto":
             profile = self._detect_best_profile()
-            print(f"🔍 Auto-detected profile: {profile}")
+            print(f"Auto-detected profile: {profile}")
 
-        print(f"📦 Installing profile: {profile}")
+        print(f"Installing profile: {profile}")
 
         # Show what will be installed
         merged_manifest = self._get_merged_manifest()
         if profile not in merged_manifest['profiles']:
-            print(f"❌ Unknown profile: {profile}")
+            print(f"ERROR: Unknown profile: {profile}")
             return False
 
         profile_config = merged_manifest['profiles'][profile]
         components = profile_config['components']
 
-        print(f"📋 Will install {len(components)} components:")
+        print(f"Will install {len(components)} components:")
         for component in components:
             component_config = merged_manifest['components'].get(component, {})
             description = component_config.get('description', 'No description')
-            print(f"  • {component}: {description}")
+            print(f"  - {component}: {description}")
 
         if dry_run:
-            print("\n💡 This is a dry run - use without --dry-run to install")
+            print("\nThis is a dry run - use without --dry-run to install")
             return True
 
         # Confirm installation
-        print(f"\n🔧 Installing {profile} profile...")
+        print(f"\nInstalling {profile} profile...")
         success = self.install_profile(profile, force=False)
 
         if success:
-            print(f"\n✅ AI Guardrails successfully initialized with {profile} profile!")
-            print("\n📚 Next steps:")
-            print("  • Run 'ai-guardrails doctor' to validate installation")
-            print("  • Check '.ai/guardrails.yaml' for configuration")
-            print("  • Customize components with 'ai-guardrails component <name>'")
+            print(f"\nAI Guardrails successfully initialized with {profile} profile!")
+            print("\nNext steps:")
+            print("  - Run 'ai-guardrails doctor' to validate installation")
+            print("  - Check '.ai/guardrails.yaml' for configuration")
+            print("  - Customize components with 'ai-guardrails component <name>'")
         else:
-            print(f"\n❌ Installation failed - run 'ai-guardrails doctor' for diagnostics")
+            print(f"\nInstallation failed - run 'ai-guardrails doctor' for diagnostics")
 
         return success
 
@@ -1034,7 +1052,7 @@ class InfrastructureBootstrap:
         import tempfile
         import shutil
         
-        print("📥 Fetching AI Guardrails templates...")
+        print("Fetching AI Guardrails templates...")
         
         try:
             # Create temporary directory for cloning
@@ -1049,7 +1067,7 @@ class InfrastructureBootstrap:
                 current_script_dir = Path(__file__).parent.parent
                 
                 if (current_script_dir / "src" / "installation-manifest.yaml").exists():
-                    print("📋 Using local templates...")
+                    print("Using local templates...")
                     
                     # Copy manifest
                     src_dir = self.target_dir / "src"
@@ -1068,25 +1086,25 @@ class InfrastructureBootstrap:
                             self.template_repo
                         )
                     
-                    print("✅ Templates copied successfully")
+                    print("Templates copied successfully")
                     return True
                 else:
                     # TODO: Implement remote fetching
-                    print("❌ Remote fetching not implemented yet")
-                    print("💡 Please run this command from the AI Guardrails bootstrap repository")
+                    print("ERROR: Remote fetching not implemented yet")
+                    print("Please run this command from the AI Guardrails bootstrap repository")
                     return False
                     
         except Exception as e:
-            print(f"❌ Failed to bootstrap templates: {e}")
+            print(f"ERROR: Failed to bootstrap templates: {e}")
             return False
 
     def _detect_best_profile(self) -> str:
         """Auto-detect the best installation profile based on environment"""
-        print("🔍 Detecting environment...")
+        print("Detecting environment...")
 
         # Check for git repository
         has_git = (self.target_dir / ".git").exists()
-        print(f"  Git repository: {'✅ detected' if has_git else '❌ not found'}")
+        print(f"  Git repository: {'detected' if has_git else 'not found'}")
 
         # Check for Python project
         has_python = any([
@@ -1095,15 +1113,15 @@ class InfrastructureBootstrap:
             (self.target_dir / "setup.py").exists(),
             (self.target_dir / "Pipfile").exists()
         ])
-        print(f"  Python project: {'✅ detected' if has_python else '❌ not found'}")
+        print(f"  Python project: {'detected' if has_python else 'not found'}")
 
         # Check for Node.js project
         has_node = (self.target_dir / "package.json").exists()
-        print(f"  Node.js project: {'✅ detected' if has_node else '❌ not found'}")
+        print(f"  Node.js project: {'detected' if has_node else 'not found'}")
 
         # Check for existing AI guardrails
         has_existing = (self.target_dir / ".ai").exists()
-        print(f"  Existing .ai config: {'⚠️  found' if has_existing else '✅ clean slate'}")
+        print(f"  Existing .ai config: {'found' if has_existing else 'clean slate'}")
 
         # Decide profile based on environment
         if has_git and (has_python or has_node):
@@ -1355,9 +1373,9 @@ def main():
         elif args.command == 'show-state':
             bootstrap.show_state()
         elif args.command == 'configure-precommit':
-            print("🔧 Reconfiguring pre-commit hooks...")
+            print("Reconfiguring pre-commit hooks...")
             bootstrap._customize_precommit_config()
-            print("✅ Pre-commit configuration updated")
+            print("Pre-commit configuration updated")
         elif args.command == 'discover':
             bootstrap.list_discovered_files(args.component)
         else:
