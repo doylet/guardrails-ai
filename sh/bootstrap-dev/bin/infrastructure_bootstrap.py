@@ -738,6 +738,85 @@ class InfrastructureBootstrap:
         print(f"\n✅ Applied {repairs_successful}/{len(repairs)} repairs successfully")
         return repairs_successful == len(repairs)
 
+    def init(self, profile: str = "auto", dry_run: bool = False) -> bool:
+        """One-click installation with smart defaults"""
+        print("🚀 AI Guardrails Init - One-Click Installation")
+        print("=" * 50)
+
+        # Auto-detect environment if profile is 'auto'
+        if profile == "auto":
+            profile = self._detect_best_profile()
+            print(f"🔍 Auto-detected profile: {profile}")
+
+        print(f"📦 Installing profile: {profile}")
+
+        # Show what will be installed
+        merged_manifest = self._get_merged_manifest()
+        if profile not in merged_manifest['profiles']:
+            print(f"❌ Unknown profile: {profile}")
+            return False
+
+        profile_config = merged_manifest['profiles'][profile]
+        components = profile_config['components']
+
+        print(f"📋 Will install {len(components)} components:")
+        for component in components:
+            component_config = merged_manifest['components'].get(component, {})
+            description = component_config.get('description', 'No description')
+            print(f"  • {component}: {description}")
+
+        if dry_run:
+            print("\n💡 This is a dry run - use without --dry-run to install")
+            return True
+
+        # Confirm installation
+        print(f"\n🔧 Installing {profile} profile...")
+        success = self.install_profile(profile, force=False)
+
+        if success:
+            print(f"\n✅ AI Guardrails successfully initialized with {profile} profile!")
+            print("\n📚 Next steps:")
+            print("  • Run 'ai-guardrails doctor' to validate installation")
+            print("  • Check '.ai/guardrails.yaml' for configuration")
+            print("  • Customize components with 'ai-guardrails component <name>'")
+        else:
+            print(f"\n❌ Installation failed - run 'ai-guardrails doctor' for diagnostics")
+
+        return success
+
+    def _detect_best_profile(self) -> str:
+        """Auto-detect the best installation profile based on environment"""
+        print("🔍 Detecting environment...")
+
+        # Check for git repository
+        has_git = (self.target_dir / ".git").exists()
+        print(f"  Git repository: {'✅ detected' if has_git else '❌ not found'}")
+
+        # Check for Python project
+        has_python = any([
+            (self.target_dir / "pyproject.toml").exists(),
+            (self.target_dir / "requirements.txt").exists(),
+            (self.target_dir / "setup.py").exists(),
+            (self.target_dir / "Pipfile").exists()
+        ])
+        print(f"  Python project: {'✅ detected' if has_python else '❌ not found'}")
+
+        # Check for Node.js project
+        has_node = (self.target_dir / "package.json").exists()
+        print(f"  Node.js project: {'✅ detected' if has_node else '❌ not found'}")
+
+        # Check for existing AI guardrails
+        has_existing = (self.target_dir / ".ai").exists()
+        print(f"  Existing .ai config: {'⚠️  found' if has_existing else '✅ clean slate'}")
+
+        # Decide profile based on environment
+        if has_git and (has_python or has_node):
+            return "full"  # Full-featured project
+        elif has_git:
+            return "standard"  # Git project without language detection
+        else:
+            return "minimal"  # Simple setup
+
     def _create_default_installation_manifest(self):
         """Create a basic installation manifest"""
         manifest_path = self.target_dir / "src" / "installation-manifest.yaml"
@@ -879,6 +958,14 @@ def main():
 
     subparsers = parser.add_subparsers(dest='command', help='Commands')
 
+    # Init command - one-click installation
+    init_parser = subparsers.add_parser('init', help='One-click installation with smart defaults')
+    init_parser.add_argument('--profile', default='auto',
+                            choices=['auto', 'minimal', 'standard', 'full'],
+                            help='Installation profile (default: auto-detect)')
+    init_parser.add_argument('--dry-run', action='store_true',
+                            help='Show what would be installed without applying')
+
     # Install profile
     install_parser = subparsers.add_parser('install', help='Install a profile')
     install_parser.add_argument('profile', help='Profile to install')
@@ -924,7 +1011,10 @@ def main():
     try:
         bootstrap = InfrastructureBootstrap(args.manifest, args.template_repo, args.target)
 
-        if args.command == 'install':
+        if args.command == 'init':
+            success = bootstrap.init(args.profile, args.dry_run)
+            exit(0 if success else 1)
+        elif args.command == 'install':
             success = bootstrap.install_profile(args.profile, args.force)
             exit(0 if success else 1)
         elif args.command == 'component':
