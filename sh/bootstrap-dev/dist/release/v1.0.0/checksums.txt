@@ -1,0 +1,2 @@
+c4a7f67a2d8e078dd5b61e102699d969fa18ae4cd8869c7fc5bf0acbb7a0b36a  ai_guardrails_bootstrap_modular.sh
+f3279348258bbf8fdfbeb3f1675e4a733c2199952acab93679603124acd4c297  ai-guardrails-templates-v1.0.0.tar.gz
