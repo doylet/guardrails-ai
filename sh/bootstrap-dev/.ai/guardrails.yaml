@@ -23,3 +23,20 @@ generic:
     **/Dockerfile* || echo 'hadolint not found')
   markdown: (command -v markdownlint >/dev/null && markdownlint . || echo 'markdownlint
     not found')
+
+# Pre-commit hook configuration (optional)
+# Uncomment and customize the section below to disable specific language packs
+# Example: disable Python linting in a Rust-only project
+precommit:
+  # Disable specific hooks by ID
+  # disabled_hooks:
+    # - lang-lint          # Disable language-specific linting
+    # - lang-test-quick     # Disable quick language tests
+    # - ai-envelope-local   # Disable AI envelope local checks
+  disabled_languages:
+    - python              # Disable all Python-related hooks
+    # - node                # Disable all Node.js-related hooks
+    # - go                  # Disable all Go-related hooks
+    # - rust                # Disable all Rust-related hooks
+    # - java                # Disable all Java-related hooks
+    # - dotnet              # Disable all .NET-related hooks
