@@ -14,6 +14,24 @@ read_cfg() {
   ' .ai/guardrails.yaml 2>/dev/null || true
 }
 
+# Check if a language is disabled in precommit.disabled_languages
+is_language_disabled() {
+  local lang="$1"
+  if [[ -f .ai/guardrails.yaml ]]; then
+    # Look for the language in the disabled_languages list under precommit section
+    awk -v lang="$lang" '
+      /^precommit:/ { in_precommit=1; next }
+      in_precommit && /^[^ ]/ && !/^precommit:/ { in_precommit=0 }
+      in_precommit && /disabled_languages:/ { in_disabled=1; next }
+      in_precommit && in_disabled && /^[ ]*-[ ]*'"$lang"'[ ]*$/ { exit 0 }
+      in_precommit && in_disabled && /^[ ]*[^ -]/ { in_disabled=0 }
+    END { exit 1 }
+    ' .ai/guardrails.yaml
+  else
+    return 1
+  fi
+}
+
 # Reads a value from .ai/guardrails.yaml for a given language and key
 py_lint=$(read_cfg python lint)
 node_lint=$(read_cfg node lint)
@@ -21,11 +39,15 @@ go_lint=$(read_cfg go lint)
 rust_lint=$(read_cfg rust lint)
 
 if [[ -f pyproject.toml || -f requirements.txt || -n "$(find . -name '*.py' -print -quit)" ]]; then
-  if [[ -n "${py_lint:-}" ]]; then bash -lc "$py_lint"; elif command -v ruff >/dev/null; then ruff check .; else echo "ruff not found; skipping python lint"; fi
-fi
-
-if [[ -f pyproject.toml || -f requirements.txt || -n "$(echo **/*.py 2>/dev/null)" ]]; then
-  if [[ -n "${py_lint:-}" ]]; then bash -lc "$py_lint"; elif command -v ruff >/dev/null; then ruff check .; else echo "ruff not found; skipping python lint"; fi
+  if is_language_disabled python; then
+    echo "Python linting disabled in guardrails.yaml"
+  elif [[ -n "${py_lint:-}" ]]; then
+    bash -lc "$py_lint"
+  elif command -v ruff >/dev/null; then
+    ruff check .
+  else
+    echo "ruff not found; skipping python lint"
+  fi
 fi
 
 if [[ -f package.json ]]; then

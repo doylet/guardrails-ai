@@ -1,0 +1,55 @@
+plugin:
+  name: doc-guardrails-kit
+  version: 1.0.0
+  description: Validation kit for ADR, COE, and Sprint Plan documentation
+  author: AI Guardrails Team
+  dependencies:
+  - core
+  - scripts
+  environment:
+    detects:
+    - python
+    - yaml
+    - markdown
+    requires:
+    - python3
+components:
+  doc-scripts:
+    description: Validation scripts
+    file_patterns:
+    - scripts/validate_docs.py
+  doc-templates:
+    description: Reference templates
+    file_patterns:
+    - docs/templates/*.md
+  doc-workflows:
+    description: GitHub Actions workflows
+    file_patterns:
+    - .github/workflows/doc-guardrails.yml
+  doc-config:
+    description: AI Guardrails config
+    file_patterns:
+    - .ai/guardrails.docs.example.yaml
+  doc-docs:
+    description: Documentation
+    file_patterns:
+    - docs/**/*.md
+profiles:
+  doc-basic:
+    description: Local validation
+    components:
+    - doc-scripts
+    - doc-templates
+  doc-full:
+    description: Full CI integration
+    components:
+    - doc-scripts
+    - doc-templates
+    - doc-workflows
+    - doc-config
+    - doc-docs
+hooks:
+  post_install:
+  - echo 'Doc-Guardrails plugin installed!'
+  - 'echo ''Run: python scripts/validate_docs.py'''
+  - 'echo ''See: docs/templates/'''

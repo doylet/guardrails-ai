@@ -9,4 +9,4 @@ SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || realpath "${BASH_S
 BIN_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 
 # Execute the Python script with all arguments
-exec "$BIN_DIR/infrastructure_bootstrap.py" "$@"
+exec "$BIN_DIR/ai-guardrails-bootstrap" "$@"

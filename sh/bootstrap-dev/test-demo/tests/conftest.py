@@ -1,5 +1,7 @@
 # tests/conftest.py (lightweight check)
-import pytest, pathlib, re, sys
+import pytest
+import pathlib
+import sys
 
 FORBIDDEN = ("src.ai_deck_gen.engines.",)
 ALLOWED   = ("src.ai_deck_gen.domain.ports", "app.cli.v1")

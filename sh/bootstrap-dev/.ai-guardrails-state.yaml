@@ -1,37 +1,66 @@
-version: '1.0'
-installed_profile: standard
-installed_components:
-- core
-- precommit
-- schemas
-- docs
-- scripts
-- github
 installation_history:
-- timestamp: '2025-09-04T19:36:59.042926'
-  action: install_component
+- action: install_component
   component: core
-- timestamp: '2025-09-04T19:36:59.043969'
-  action: install_component
+  timestamp: '2025-09-04T19:36:59.042926'
+- action: install_component
   component: schemas
-- timestamp: '2025-09-04T19:36:59.045185'
-  action: install_component
+  timestamp: '2025-09-04T19:36:59.043969'
+- action: install_component
   component: scripts
-- timestamp: '2025-09-04T19:37:00.580648'
-  action: install_component
+  timestamp: '2025-09-04T19:36:59.045185'
+- action: install_component
   component: precommit
-- timestamp: '2025-09-04T19:37:00.582463'
-  action: install_component
+  timestamp: '2025-09-04T19:37:00.580648'
+- action: install_component
   component: docs
-- timestamp: '2025-09-04T19:37:00.583812'
-  action: install_profile
-  profile: standard
+  timestamp: '2025-09-04T19:37:00.582463'
+- action: install_profile
   components:
   - core
   - schemas
   - scripts
   - precommit
   - docs
-- timestamp: '2025-09-04T21:20:16.867922'
-  action: install_component
+  profile: standard
+  timestamp: '2025-09-04T19:37:00.583812'
+- action: install_component
   component: github
+  timestamp: '2025-09-04T21:20:16.867922'
+- action: install_component
+  component: doc-scripts
+  timestamp: '2025-09-05T14:42:08.975587'
+- action: install_component
+  component: doc-templates
+  timestamp: '2025-09-05T14:42:08.978764'
+- action: install_component
+  component: doc-workflows
+  timestamp: '2025-09-05T14:42:08.982082'
+- action: install_component
+  component: doc-config
+  timestamp: '2025-09-05T14:42:08.985616'
+- action: install_component
+  component: doc-docs
+  timestamp: '2025-09-05T14:42:08.989794'
+- action: install_profile
+  components:
+  - doc-scripts
+  - doc-templates
+  - doc-workflows
+  - doc-config
+  - doc-docs
+  profile: doc-full
+  timestamp: '2025-09-05T14:42:08.992730'
+installed_components:
+- github
+- doc-scripts
+- doc-templates
+- doc-workflows
+- doc-docs
+- core
+- schemas
+- precommit
+- docs
+- scripts
+- doc-config
+installed_profile: doc-full
+version: '1.0'

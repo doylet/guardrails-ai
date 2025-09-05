@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 """Test script for demos-on-rails-kit integration with ai-deck-gen."""
-import os
 import sys
-import tempfile
 from pathlib import Path
 
 # Add the tools directory to path for imports
 TOOLS_DIR = Path(__file__).parent / "ai" / "tools"
 sys.path.insert(0, str(TOOLS_DIR))
 
-from demo_harness import load_yaml, cli_cmd, run_cli, parse_quality
+from demo_harness import load_yaml, cli_cmd
 
 def test_integration():
     """Test the integration between demo harness and ai-deck-gen."""

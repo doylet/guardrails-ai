@@ -1,5 +1,7 @@
 # scripts/validate_demo_scenarios.py
-import sys, yaml, glob
+import sys
+import yaml
+import glob
 
 required = [
   "topic","audience","slide_types",

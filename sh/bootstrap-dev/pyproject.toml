@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "keystone"
+version = "0.1.0"
+description = ""
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Thomas Doyle", email = "thomas.doyle84@gmail.com" }]
+dependencies = ["requests>=2.0"]
+
+# Console command(s)
+# [project.scripts]
+
+
+# Optional plugin entry points (custom group)
+[project.entry-points.keystone]
+main = "bin.infrastructure_bootstrap:main"
+
+
+# Auto-discover packages under src/ (regular packages with __init__.py)
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# If you use PEP420 implicit namespaces, use this instead (see §6):
+# [tool.setuptools.packages.find]
+# where = ["src"]
+# namespaces = true
+
+# Setuptools: tell it we use src/ layout
+[tool.setuptools.package-dir]
+src = "src"
+infra = "src.infra"
+
+# infra-utils-activate_plugins = "infra.utils::activate_plugins"

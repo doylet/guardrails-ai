@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """Demo harness that executes demos through the production interface."""
-import argparse, subprocess, sys, json, os, time, yaml
+import argparse
+import subprocess
+import sys
+import json
+import os
+import time
+import yaml
 from pathlib import Path
 
 # Use the bridge by default, but allow override
@@ -24,10 +30,13 @@ def cli_cmd(sc):
         "--json",  # Request JSON output for parsing
     ]
     for k, v in (sc.get("feature_flags") or {}).items():
-        if v: args += ["--flag", k]
+        if v:
+            args += ["--flag", k]
     prof = sc.get("provider_profile") or {}
-    if prof.get("model"): args += ["--model", prof["model"]]
-    if prof.get("temperature") is not None: args += ["--temperature", str(prof["temperature"])]
+    if prof.get("model"):
+        args += ["--model", prof["model"]]
+    if prof.get("temperature") is not None:
+        args += ["--temperature", str(prof["temperature"])]
 
     # Add output directory if specified
     output_dir = sc.get("output_dir")
@@ -75,11 +84,14 @@ def parse_quality(stdout):
 
 def check_expectations(exp, q):
     fail = []
-    if exp.get("no_placeholders") and q["placeholders_found"] > 0: fail.append("placeholders_present")
+    if exp.get("no_placeholders") and q["placeholders_found"] > 0:
+        fail.append("placeholders_present")
     if exp.get("min_layout_satisfaction") is not None and q["layout_satisfaction"] is not None:
-        if q["layout_satisfaction"] < exp["min_layout_satisfaction"]: fail.append("layout_satisfaction_below_threshold")
+        if q["layout_satisfaction"] < exp["min_layout_satisfaction"]:
+            fail.append("layout_satisfaction_below_threshold")
     if exp.get("min_elements_per_slide") is not None and q["elements_per_slide"] is not None:
-        if q["elements_per_slide"] < exp["min_elements_per_slide"]: fail.append("elements_per_slide_below_threshold")
+        if q["elements_per_slide"] < exp["min_elements_per_slide"]:
+            fail.append("elements_per_slide_below_threshold")
     return fail
 
 def write_report(out_dir, data):
@@ -106,7 +118,8 @@ def cmd_run(args):
     write_report(out_dir, report)
     print("== DEMO REPORT ==")
     print(json.dumps(report, indent=2))
-    if failures: sys.exit(2 if code == 0 else code)
+    if failures:
+        sys.exit(2 if code == 0 else code)
     sys.exit(code)
 
 def main():
@@ -117,7 +130,8 @@ def main():
     r.set_defaults(func=cmd_run)
     a = p.parse_args()
     if not a.sub:
-        p.print_help(); sys.exit(1)
+        p.print_help()
+        sys.exit(1)
     a.func(a)
 
 if __name__ == "__main__":

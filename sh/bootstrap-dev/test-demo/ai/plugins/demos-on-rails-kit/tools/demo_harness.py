@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """Demo harness that executes demos through the production interface."""
-import argparse, subprocess, sys, json, os, time, yaml
+import argparse
+import subprocess
+import sys
+import json
+import os
+import time
+import yaml
 
 DEFAULT_CLI = os.environ.get("DECKGEN_CLI", "deckgen")
 

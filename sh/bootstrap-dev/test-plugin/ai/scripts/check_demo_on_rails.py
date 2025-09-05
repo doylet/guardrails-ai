@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-import os, re, sys
+import os
+import re
+import sys
 ROOT = os.getcwd()
 FORBIDDEN = [r"from\s+src\.ai_deck_gen\.engine", r"from\s+ai_deck_gen\.engine", r"import\s+src\.ai_deck_gen\.engine"]
 def scan_py(path):
@@ -8,7 +10,7 @@ def scan_py(path):
     except Exception: return []
     return [pat for pat in FORBIDDEN if re.search(pat, txt)]
 def main():
-    bad=[] 
+    bad=[]
     for root,_,files in os.walk(ROOT):
         for fn in files:
             if fn.endswith(".py") and ("demo" in fn.lower() or "demos" in root.lower()):
