@@ -3,11 +3,8 @@
 import sys
 from pathlib import Path
 
-# Add the tools directory to path for imports
-TOOLS_DIR = Path(__file__).parent / "ai" / "tools"
-sys.path.insert(0, str(TOOLS_DIR))
-
-from demo_harness import load_yaml, cli_cmd
+# Use relative imports instead of path manipulation
+from ai.tools.demo_harness import load_yaml, cli_cmd
 
 def test_integration():
     """Test the integration between demo harness and ai-deck-gen."""
