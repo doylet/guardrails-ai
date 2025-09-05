@@ -490,15 +490,24 @@ class InfrastructureBootstrap:
 
     def _should_merge_file(self, src_path: Path, target_path: Path) -> bool:
         """Check if a file should be merged instead of copied"""
+        # First check if files are identical - if so, no merge needed
+        if target_path.exists():
+            try:
+                with open(src_path, 'r') as f1, open(target_path, 'r') as f2:
+                    if f1.read() == f2.read():
+                        return False  # Files are identical, skip merge
+            except Exception:
+                pass  # If comparison fails, proceed with normal logic
+
         # Special case: example files should merge/rename to main files
         if src_path.name.startswith('guardrails.') and src_path.name.endswith('.example.yaml'):
             return True
         if src_path.name.endswith('.example.yaml') or src_path.name.endswith('.yaml.example'):
             return True
 
-        # Merge YAML files with specific names when target exists
-        merge_files = {'.ai/guardrails.yaml', '.ai/envelope.json'}
-        return target_path.exists() and str(target_path).endswith(tuple(merge_files))
+        # Do NOT merge regular (non-example) files when target already exists
+        # This preserves user customizations
+        return False
 
     def _get_merge_target_path(self, src_path: Path, original_target_path: Path) -> Path:
         """Get the actual target path for merging (may differ from original target)"""
