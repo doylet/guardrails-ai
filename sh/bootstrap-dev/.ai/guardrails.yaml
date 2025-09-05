@@ -23,18 +23,3 @@ generic:
     **/Dockerfile* || echo 'hadolint not found')
   markdown: (command -v markdownlint >/dev/null && markdownlint . || echo 'markdownlint
     not found')
-
-# Pre-commit hook configuration
-precommit:
-  # Disable specific hooks by ID
-  disabled_hooks:
-    # - lang-lint          # Disable language-specific linting
-    # - lang-test-quick     # Disable quick language tests
-    # - ai-envelope-local   # Disable AI envelope local checks
-  
-  # Disable hooks by language/technology
-  disabled_languages:
-    # - python              # Disable all Python-related hooks
-    # - node                # Disable all Node.js-related hooks
-    # - go                  # Disable all Go-related hooks
-    # - rust                # Disable all Rust-related hooks
