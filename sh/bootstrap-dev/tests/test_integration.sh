@@ -79,7 +79,7 @@ test_output_compatibility() {
         "ai/scripts/check_envelope.py"
         "ai/scripts/lang_lint.sh"
         ".pre-commit-config.yaml"
-        ".github/workflows/ai_guardrails_on_commit.yml"
+        ".github/workflows/ai_guardrails_on_commit.yaml"
     )
 
     for file in "${key_files[@]}"; do

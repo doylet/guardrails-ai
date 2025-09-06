@@ -108,14 +108,14 @@ get_components() {
     "core")
       echo ".ai/guardrails.yaml .ai/envelope.json"
       ;;
-    "schemas") 
+    "schemas")
       echo "ai/schemas/copilot_envelope.schema.json"
       ;;
     "scripts")
       echo "ai/scripts/check_envelope.py ai/scripts/check_envelope_local.py ai/scripts/lang_lint.sh ai/scripts/lang_test.sh"
       ;;
     "github")
-      echo ".github/workflows/ai_guardrails_on_commit.yml .github/pull_request_template.md .github/chatmodes/blueprint-mode-mod.chatmode.md"
+      echo ".github/workflows/ai_guardrails_on_commit.yaml .github/pull_request_template.md .github/chatmodes/blueprint-mode-mod.chatmode.md"
       ;;
     "precommit")
       echo ".pre-commit-config.yaml"
@@ -453,27 +453,27 @@ apply_templates() {
 install_component() {
   local component="$1"
   local files=$(get_components "$component")
-  
+
   if [[ -z "$files" ]]; then
     echo "::warning:: Unknown component: $component"
     return 1
   fi
 
   echo "Installing component: $component"
-  
+
   for file_path in $files; do
     # Handle special cases for template structure
     local template_path="$file_path"
     if [[ "$file_path" =~ ^\.github/ ]] || [[ "$file_path" =~ ^docs/ ]] || [[ "$file_path" == ".pre-commit-config.yaml" ]]; then
       template_path="templates/$file_path"
     fi
-    
+
     local optional="false"
     # Scripts are optional in offline mode
     if [[ "$component" == "scripts" ]] || [[ "$component" == "github" ]]; then
       optional="true"
     fi
-    
+
     write_template "$template_path" "$file_path" "$optional"
   done
 

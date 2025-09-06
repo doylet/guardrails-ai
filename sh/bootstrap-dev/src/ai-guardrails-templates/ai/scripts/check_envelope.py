@@ -133,7 +133,7 @@ def allowed_from(env):
     # Get the list of allowed files from the envelope
     allowed |= {
         ".github/pull_request_template.md",".github/CODEOWNERS",
-        ".github/workflows/ai_guardrails_on_commit.yml",
+        ".github/workflows/ai_guardrails_on_commit.yaml",
         "README.md","CONTRIBUTING.md","ai/CONTRIBUTING_AI.md"
     }
 

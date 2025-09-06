@@ -109,7 +109,7 @@ Verify these files exist and look correct:
 - `ai/schemas/copilot_envelope.schema.json`
 - `ai/scripts/check_envelope.py`
 - `.pre-commit-config.yaml`
-- `.github/workflows/ai_guardrails_on_commit.yml`
+- `.github/workflows/ai_guardrails_on_commit.yaml`
 
 ### 3. Test Pre-commit Hooks
 
@@ -134,7 +134,7 @@ git checkout HEAD~1 -- .ai/ ai/ .github/ .pre-commit-config.yaml
 
 ```bash
 # Remove modular installation and reinstall with unified script
-rm -rf .ai/ ai/ .github/workflows/ai_guardrails_on_commit.yml .pre-commit-config.yaml
+rm -rf .ai/ ai/ .github/workflows/ai_guardrails_on_commit.yaml .pre-commit-config.yaml
 ./ai_guardrails_bootstrap_unified.sh --apply
 ```
 

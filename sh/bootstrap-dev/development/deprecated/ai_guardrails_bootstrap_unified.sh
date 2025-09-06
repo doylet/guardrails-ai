@@ -132,7 +132,7 @@ doctor() {
     "ai/scripts/lang_lint.sh"
     "ai/scripts/lang_test.sh"
     ".pre-commit-config.yaml"
-    ".github/workflows/ai_guardrails_on_commit.yml"
+    ".github/workflows/ai_guardrails_on_commit.yaml"
     ".github/chatmodes/blueprint-mode-mod.chatmode.md"
     ".github/prompts/strict_mode.prompts.md"
     ".github/instructions/memory-usage.md"
@@ -370,7 +370,7 @@ def allowed_from(env):
             p=t.get(k); allowed.update([p] if p else [])
     allowed |= {
         ".github/pull_request_template.md",".github/CODEOWNERS",
-        ".github/workflows/ai_guardrails_on_commit.yml",
+        ".github/workflows/ai_guardrails_on_commit.yaml",
         "README.md","CONTRIBUTING.md","ai/CONTRIBUTING_AI.md"
     }
     return allowed
@@ -548,7 +548,7 @@ fi
         stages: [pre-commit]'
 
   # GitHub Actions workflow
-  write_file ".github/workflows/ai_guardrails_on_commit.yml" "EOFYAML2" \
+  write_file ".github/workflows/ai_guardrails_on_commit.yaml" "EOFYAML2" \
 'name: AI Guardrails (Full)
 on:
   pull_request:

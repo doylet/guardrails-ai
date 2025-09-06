@@ -1,0 +1,22 @@
+name: Commit message lint
+on: { workflow_call: {} }
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  lint-commit-messages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Validate commit messages (no-op on push)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "Not a PR; skipping."; exit 0; fi
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          python ai/scripts/policy/commit_msg_check.py --range="$base..$head"

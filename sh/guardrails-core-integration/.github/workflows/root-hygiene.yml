@@ -1,0 +1,22 @@
+name: Root hygiene
+on: { workflow_call: {} }
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  enforce-root-hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Root hygiene (no-op on push)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "Not a PR; skipping."; exit 0; fi
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          bash ai/scripts/policy/root_hygiene.sh ci "$base..$head"

@@ -335,7 +335,7 @@ apply_templates() {
   chmod +x ai/scripts/*.py ai/scripts/*.sh 2>/dev/null || true
 
   # GitHub files
-  write_template ".github/workflows/ai_guardrails_on_commit.yml" ".github/workflows/ai_guardrails_on_commit.yml"
+  write_template ".github/workflows/ai_guardrails_on_commit.yaml" ".github/workflows/ai_guardrails_on_commit.yaml"
   write_template ".github/pull_request_template.md" ".github/pull_request_template.md"
   write_template ".github/chatmodes/blueprint-mode-mod.chatmode.md" ".github/chatmodes/blueprint-mode-mod.chatmode.md"
   write_template ".pre-commit-config.yaml" ".pre-commit-config.yaml"

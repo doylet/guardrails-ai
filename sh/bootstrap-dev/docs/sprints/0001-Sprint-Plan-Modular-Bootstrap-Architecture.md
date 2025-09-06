@@ -70,7 +70,7 @@ Transform AI guardrails distribution from maintenance burden to scalable, user-f
 - [x] `ai/scripts/check_envelope_local.py` - Local scope checking
 - [x] `ai/scripts/lang_lint.sh` - Language-aware linting
 - [x] `ai/scripts/lang_test.sh` - Language-aware testing
-- [x] `.github/workflows/ai_guardrails_on_commit.yml` - CI workflow
+- [x] `.github/workflows/ai_guardrails_on_commit.yaml` - CI workflow
 - [x] `.github/pull_request_template.md` - PR template
 - [x] `.github/chatmodes/blueprint-mode-mod.chatmode.md` - Chat mode
 - [x] `.pre-commit-config.yaml` - Pre-commit configuration

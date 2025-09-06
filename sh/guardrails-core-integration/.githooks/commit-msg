@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+exec python ai/scripts/policy/commit_msg_check.py "$1"

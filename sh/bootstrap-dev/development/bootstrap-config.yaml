@@ -51,8 +51,8 @@ components:
     optional: true
     environment_specific: true
     files:
-      - source: ".github/workflows/ai_guardrails_on_commit.yml"
-        target: ".github/workflows/ai_guardrails_on_commit.yml"
+      - source: ".github/workflows/ai_guardrails_on_commit.yaml"
+        target: ".github/workflows/ai_guardrails_on_commit.yaml"
         conditions:
           - has_github: true
       - source: ".github/pull_request_template.md"
@@ -83,15 +83,15 @@ profiles:
   minimal:
     description: "Minimal installation - core only"
     components: ["core", "schemas"]
-  
+
   standard:
     description: "Standard installation"
     components: ["core", "schemas", "scripts", "docs"]
-  
+
   full:
     description: "Full installation with GitHub integration"
     components: ["core", "schemas", "scripts", "github", "precommit", "docs"]
-  
+
   custom:
     description: "Custom installation - user selects components"
     components: []  # Will be selected interactively
