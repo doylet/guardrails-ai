@@ -50,17 +50,26 @@ installation_history:
   - doc-docs
   profile: doc-full
   timestamp: '2025-09-05T14:42:08.992730'
+- action: install_profile
+  components:
+  - doc-scripts
+  - doc-templates
+  - doc-workflows
+  - doc-config
+  - doc-docs
+  profile: doc-full
+  timestamp: '2025-09-06T11:06:17.842750'
 installed_components:
-- github
 - doc-scripts
-- doc-templates
-- doc-workflows
-- doc-docs
+- docs
+- precommit
+- scripts
 - core
 - schemas
-- precommit
-- docs
-- scripts
+- doc-docs
+- github
 - doc-config
+- doc-workflows
+- doc-templates
 installed_profile: doc-full
 version: '1.0'
