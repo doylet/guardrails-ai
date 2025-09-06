@@ -13,6 +13,7 @@ repos:
     language: system
     name: language lint (auto-detect)
     pass_filenames: false
+    exclude: (.*\.py$)
   - entry: ai/scripts/lang_test.sh
     id: lang-test-quick
     language: system

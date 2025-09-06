@@ -28,13 +28,14 @@ components:
   github:
     description: "GitHub integration files"
     file_patterns:
-      - ".github/**/*"
-    target_prefix: ""  # Remove 'templates/' prefix when installing
+      - "templates/.github/**/*"
+    target_prefix: "templates/"  # Remove 'templates/' prefix when installing
 
   precommit:
     description: "Pre-commit configuration"
     file_patterns:
       - ".pre-commit-config.yaml.example"
+      - ".pre-commit-config.yaml"
 
   docs:
     description: "All documentation templates"

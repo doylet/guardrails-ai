@@ -358,6 +358,9 @@ class InfrastructureBootstrap:
 
             success = True
             for rel_file in files:
+                # Apply target_prefix stripping if configured
+                target_rel_file = self._apply_target_prefix_stripping(component, rel_file)
+
                 # Determine source path
                 if self._is_plugin_component(component):
                     plugin_path = self._get_plugin_path_for_component(component)
@@ -373,7 +376,7 @@ class InfrastructureBootstrap:
                 else:
                     src_path = self.template_repo / rel_file
 
-                target_path = self.target_dir / rel_file
+                target_path = self.target_dir / target_rel_file
 
                 if not src_path or not src_path.exists():
                     print(f"  {Colors.error('[ERROR]')} Source not found: {rel_file}")
@@ -431,7 +434,9 @@ class InfrastructureBootstrap:
             # Get disabled languages from guardrails config
             disabled_languages = []
             if 'precommit' in guardrails and 'disabled_languages' in guardrails['precommit']:
-                disabled_languages = guardrails['precommit']['disabled_languages']
+                raw_disabled = guardrails['precommit']['disabled_languages']
+                # Handle None/null values from YAML loading (empty lists with only comments)
+                disabled_languages = raw_disabled if raw_disabled is not None else []
 
             # Customize pre-commit hooks based on disabled languages
             if disabled_languages:
@@ -488,6 +493,21 @@ class InfrastructureBootstrap:
                 print(f"  {Colors.warn('[WARN]')} Pre-commit install failed: {result.stderr}")
         except Exception as e:
             print(f"  {Colors.warn('[WARN]')} Failed to install pre-commit hooks: {e}")
+
+    def _apply_target_prefix_stripping(self, component: str, rel_file: str) -> str:
+        """Apply target_prefix stripping if configured for component"""
+        merged_manifest = self._get_merged_manifest()
+
+        if component not in merged_manifest['components']:
+            return rel_file
+
+        component_config = merged_manifest['components'][component]
+        target_prefix = component_config.get('target_prefix', '')
+
+        if target_prefix and rel_file.startswith(target_prefix):
+            return rel_file[len(target_prefix):]
+
+        return rel_file
 
     def _should_merge_file(self, src_path: Path, target_path: Path) -> bool:
         """Check if a file should be merged instead of copied"""
@@ -553,12 +573,36 @@ class InfrastructureBootstrap:
                 if target_path.suffix == '.json':
                     json.dump(merged_data, f, indent=2)
                 else:
+                    # Clean up null values that should be empty lists (for guardrails.yaml)
+                    if target_path.name == 'guardrails.yaml':
+                        self._clean_yaml_nulls(merged_data)
                     yaml.dump(merged_data, f, default_flow_style=False)
 
         except Exception as e:
             # Fallback to copy if merge fails
             print(f"  merge failed, copying instead: {e}")
             shutil.copy2(src_path, target_path)
+
+    def _clean_yaml_nulls(self, data: dict):
+        """Clean up null values in YAML data that should be empty lists"""
+        list_fields = [
+            ['precommit', 'disabled_hooks'],
+            ['precommit', 'disabled_languages']
+        ]
+        
+        for field_path in list_fields:
+            current = data
+            # Navigate to parent
+            for key in field_path[:-1]:
+                if key in current and isinstance(current[key], dict):
+                    current = current[key]
+                else:
+                    break
+            else:
+                # Set null fields to empty lists
+                field_name = field_path[-1]
+                if field_name in current and current[field_name] is None:
+                    current[field_name] = []
 
     def _deep_merge_dict(self, target: dict, source: dict) -> dict:
         """Deep merge two dictionaries"""

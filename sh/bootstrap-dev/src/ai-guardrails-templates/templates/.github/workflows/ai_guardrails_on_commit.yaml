@@ -1,0 +1,76 @@
+name: AI Guardrails (Full)
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+  push:
+    # default is all branches; uncomment to restrict
+    # branches: ['**']
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ai-guardrails-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  envelope:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --upgrade pip jsonschema requests
+      - name: Validate envelope & scope
+        run: python ai/scripts/check_envelope.py
+
+  python:
+    if: ${{ hashFiles('**/pyproject.toml', '**/requirements.txt') != '' || hashFiles('**/*.py') != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: |
+          set -euxo pipefail
+          python -m pip install --upgrade pip
+          [ -f requirements-dev.txt ] && pip install -r requirements-dev.txt || true
+          [ -f requirements.txt ] && pip install -r requirements.txt || true
+          pip install -q pytest ruff mypy
+      - run: ruff check .
+      - run: mypy .
+      - run: pytest -q
+
+  node:
+    if: ${{ hashFiles('**/package.json') != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install
+        run: |
+          set -euxo pipefail
+          if [ -f package-lock.json ]; then
+            npm ci
+          elif [ -f pnpm-lock.yaml ]; then
+            corepack enable
+            pnpm i --frozen-lockfile
+          elif [ -f yarn.lock ]; then
+            yarn --frozen-lockfile
+          else
+            npm i
+          fi
+      - name: Lint
+        run: npx -y eslint . || npx -y @biomejs/biome check .
+      - name: T
