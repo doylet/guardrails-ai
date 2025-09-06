@@ -1,0 +1,52 @@
+# AI Guardrails Bootstrap - Plugin Manifest
+# Plugin: Commit Message Kit
+# Description: Git commit message templates and hooks for consistent commit standards
+
+plugin:
+  name: "commit-msg-kit"
+  version: "1.0.0"
+  description: "Git commit message templates and hooks for consistent commit standards"
+  author: "AI Guardrails Team"
+
+  # Plugin dependencies (other plugins or base components)
+  dependencies:
+    - "core"
+
+  # Plugin-specific environment detection
+  environment:
+    detects: ["git"]
+    requires: ["git"]
+
+# Plugin file patterns (following same structure as main manifest)
+components:
+  commit-msg:
+    description: "Git commit message templates and hooks"
+    file_patterns:
+      - ".githooks/**/*"
+      - ".gitmessage.txt"
+      - "ai/scripts/**/*"
+
+  vscode-commit:
+    description: "VS Code configuration for commit messages"
+    file_patterns:
+      - ".vscode/**/*"
+
+  github-commit:
+    description: "GitHub templates for commit messages"
+    file_patterns:
+      - ".github/**/*"
+
+# Plugin profiles (groups of components that work together)
+profiles:
+  commit-msg-standard:
+    description: "Standard commit message setup with hooks and templates"
+    components:
+      - "commit-msg"
+      - "vscode-commit"
+
+  commit-msg-full:
+    description: "Full commit message setup including GitHub templates"
+    components:
+      - "commit-msg"
+      - "vscode-commit"
+      - "github-commit"

@@ -438,9 +438,8 @@ class InfrastructureBootstrap:
                 # Handle None/null values from YAML loading (empty lists with only comments)
                 disabled_languages = raw_disabled if raw_disabled is not None else []
 
-            # Customize pre-commit hooks based on disabled languages
-            if disabled_languages:
-                self._apply_language_exclusions(precommit_config, disabled_languages)
+            # Always apply language exclusions (even if empty list, to set up the pattern)
+            self._apply_language_exclusions(precommit_config, disabled_languages)
 
             # Write back the customized config
             with open(precommit_path, 'w') as f:
@@ -476,9 +475,17 @@ class InfrastructureBootstrap:
                 if repo.get('repo') == 'local':
                     for hook in repo.get('hooks', []):
                         if hook.get('id') == 'lang-lint':
-                            # Combine patterns with OR
-                            exclude_pattern = '|'.join(f'({pattern})' for pattern in exclude_patterns)
-                            hook['exclude'] = exclude_pattern
+                            # Combine language exclusion patterns
+                            language_exclude_pattern = '|'.join(f'({pattern})' for pattern in exclude_patterns)
+
+                            # Preserve existing custom exclude pattern if it exists
+                            existing_exclude = hook.get('exclude', '')
+                            if existing_exclude:
+                                # Merge existing pattern with language exclusions
+                                hook['exclude'] = f'({existing_exclude})|({language_exclude_pattern})'
+                            else:
+                                # No existing pattern, just use language exclusions
+                                hook['exclude'] = language_exclude_pattern
                             break
 
     def _install_precommit_hooks(self):
@@ -565,8 +572,27 @@ class InfrastructureBootstrap:
             else:
                 target_data = {}
 
+            # Special handling for .pre-commit-config.yaml: preserve custom exclude patterns
+            preserved_excludes = {}
+            if target_path.name == '.pre-commit-config.yaml' and 'repos' in target_data:
+                for repo in target_data.get('repos', []):
+                    if repo.get('repo') == 'local':
+                        for hook in repo.get('hooks', []):
+                            hook_id = hook.get('id')
+                            if hook_id and 'exclude' in hook:
+                                preserved_excludes[hook_id] = hook['exclude']
+
             # Merge the data
             merged_data = self._deep_merge_dict(target_data, src_data)
+
+            # Restore preserved exclude patterns for .pre-commit-config.yaml
+            if target_path.name == '.pre-commit-config.yaml' and preserved_excludes:
+                for repo in merged_data.get('repos', []):
+                    if repo.get('repo') == 'local':
+                        for hook in repo.get('hooks', []):
+                            hook_id = hook.get('id')
+                            if hook_id in preserved_excludes:
+                                hook['exclude'] = preserved_excludes[hook_id]
 
             # Write back the merged result in the original format
             with open(target_path, 'w') as f:
@@ -589,7 +615,7 @@ class InfrastructureBootstrap:
             ['precommit', 'disabled_hooks'],
             ['precommit', 'disabled_languages']
         ]
-        
+
         for field_path in list_fields:
             current = data
             # Navigate to parent

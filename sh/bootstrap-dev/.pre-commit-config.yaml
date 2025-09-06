@@ -9,11 +9,11 @@ repos:
   rev: v4.6.0
 - hooks:
   - entry: ai/scripts/lang_lint.sh
+    exclude: (^src/foo_test_project/*)|((.*\.py$))
     id: lang-lint
     language: system
     name: language lint (auto-detect)
     pass_filenames: false
-    exclude: (.*\.py$)
   - entry: ai/scripts/lang_test.sh
     id: lang-test-quick
     language: system
