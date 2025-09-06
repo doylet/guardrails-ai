@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 # ai/scripts/policy/commit_msg_check.py
 
-import sys, re, os, subprocess
+import sys
+import re
+import os
+import subprocess
 
 MAX_SUBJECT = int(os.environ.get("MAX_SUBJECT", "72"))
 MAX_BODY_LINES = int(os.environ.get("MAX_BODY_LINES", "30"))

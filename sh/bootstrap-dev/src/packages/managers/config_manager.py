@@ -8,8 +8,8 @@ import subprocess
 from pathlib import Path
 from typing import Dict, List
 
-from .utils import Colors
-from .yaml_operations import YAMLOperations
+from ..utils import Colors
+from ..operations import YAMLOperations
 
 
 class ConfigManager:

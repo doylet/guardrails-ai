@@ -4,7 +4,7 @@ Presentation Layer
 Separates display logic from business logic for better SRP
 """
 from typing import Dict, List
-from .utils import Colors
+from ..utils import Colors
 
 
 class StatePresenter:

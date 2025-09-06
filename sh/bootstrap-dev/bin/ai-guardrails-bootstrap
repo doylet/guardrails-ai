@@ -12,7 +12,7 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from infra import InfrastructureBootstrap
+from packages import InfrastructureBootstrap
 
 
 def main():

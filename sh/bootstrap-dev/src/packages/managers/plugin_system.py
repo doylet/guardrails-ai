@@ -7,7 +7,7 @@ import yaml
 from pathlib import Path
 from typing import Dict
 
-from .utils import Colors
+from ..utils import Colors
 
 
 class PluginSystem:

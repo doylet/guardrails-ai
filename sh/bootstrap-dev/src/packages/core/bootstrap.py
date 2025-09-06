@@ -14,13 +14,10 @@ import yaml
 from pathlib import Path
 from typing import Dict, List
 
-from .utils import Colors
-from .state_manager import StateManager
-from .plugin_system import PluginSystem
-from .component_manager import ComponentManager
-from .config_manager import ConfigManager
-from .doctor import Doctor
-from .presenters import ProfilePresenter
+from ..utils import Colors
+from ..managers import StateManager, PluginSystem, ComponentManager, ConfigManager
+from ..operations import Doctor
+from ..presentation import ProfilePresenter
 
 
 class InfrastructureBootstrap:
@@ -29,7 +26,7 @@ class InfrastructureBootstrap:
         self.target_dir = Path(target_dir) if target_dir else Path.cwd()
 
         # Templates should come from the tool installation, not the target project
-        script_dir = Path(__file__).parent.parent.parent / "bin"
+        script_dir = Path(__file__).parent.parent.parent.parent / "bin"
         self.template_repo = script_dir.parent / "src" / "ai-guardrails-templates"
 
         # Manifest should also come from tool installation

@@ -8,10 +8,10 @@ from pathlib import Path
 from typing import Dict, List
 from glob import glob
 
-from .utils import Colors
+from ..utils import Colors
 from .plugin_system import PluginSystem
 from .config_manager import ConfigManager
-from .presenters import ComponentPresenter
+from ..presentation import ComponentPresenter
 
 
 class ComponentManager:

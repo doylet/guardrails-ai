@@ -7,17 +7,18 @@ import sys
 import subprocess
 import yaml
 from pathlib import Path
-from typing import Dict
+from typing import Dict, TYPE_CHECKING
 
-from .utils import Colors
-from .state_manager import StateManager
-from .component_manager import ComponentManager
+from ..utils import Colors
+
+if TYPE_CHECKING:
+    from ..managers import StateManager, ComponentManager
 
 
 class Doctor:
     """Diagnostic and validation functionality"""
 
-    def __init__(self, target_dir: Path, state_manager: StateManager, component_manager: ComponentManager):
+    def __init__(self, target_dir: Path, state_manager: 'StateManager', component_manager: 'ComponentManager'):
         self.target_dir = target_dir
         self.state_manager = state_manager
         self.component_manager = component_manager
@@ -29,7 +30,7 @@ class Doctor:
 
         issues_found = 0
 
-        if focus == "yaml" or focus == "all":
+        if focus in ["all", "yaml"]:
             issues_found += self._check_yaml_structure()
 
         if focus == "all":
@@ -142,6 +143,62 @@ class Doctor:
             else:
                 print(f"  {Colors.error('[ERROR]')} Component '{component}': not found in manifest")
                 issues += 1
+
+        return issues
+
+    def _check_target_structure(self, manifest: Dict) -> int:
+        """Validate target directory structure against schema"""
+        print("\nTarget Structure Validation:")
+        issues = 0
+
+        # Load target structure schema if specified
+        target_schema_path = manifest.get('settings', {}).get('target_structure_schema')
+        if not target_schema_path:
+            print(f"  {Colors.info('[INFO]')} No target structure schema specified")
+            return issues
+
+        schema_file = self.target_dir.parent / "src" / target_schema_path
+        if not schema_file.exists():
+            print(f"  {Colors.warn('[WARN]')} Target structure schema not found: {schema_file}")
+            return issues + 1
+
+        try:
+            with open(schema_file) as f:
+                target_schema = yaml.safe_load(f)
+        except Exception as e:
+            print(f"  {Colors.error('[ERROR]')} Failed to load target structure schema: {e}")
+            return issues + 1
+
+        # Check core requirements
+        expected_structure = target_schema.get('expected_structure', {})
+
+        for path, config in expected_structure.items():
+            if config.get('required', False):
+                target_path = self.target_dir / path.strip('"/')
+                if not target_path.exists():
+                    print(f"  {Colors.error('[ERROR]')} Required structure missing: {path}")
+                    issues += 1
+                else:
+                    print(f"  {Colors.ok('[OK]')} Required structure present: {path}")
+
+        # Check core requirements from schema
+        core_requirements = target_schema.get('validation', {}).get('core_requirements', [])
+        for requirement in core_requirements:
+            if "Must have .ai/ directory with guardrails.yaml" in requirement:
+                guardrails_path = self.target_dir / ".ai" / "guardrails.yaml"
+                if not guardrails_path.exists():
+                    print(f"  {Colors.error('[ERROR]')} Missing core requirement: .ai/guardrails.yaml")
+                    issues += 1
+                else:
+                    print(f"  {Colors.ok('[OK]')} Core requirement satisfied: .ai/guardrails.yaml")
+
+            elif "Must have ai/schemas/ directory with copilot_envelope.schema.json" in requirement:
+                schema_path = self.target_dir / "ai" / "schemas" / "copilot_envelope.schema.json"
+                if not schema_path.exists():
+                    print(f"  {Colors.error('[ERROR]')} Missing core requirement: ai/schemas/copilot_envelope.schema.json")
+                    issues += 1
+                else:
+                    print(f"  {Colors.ok('[OK]')} Core requirement satisfied: ai/schemas/copilot_envelope.schema.json")
 
         return issues
 

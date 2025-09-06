@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Dict, List
 from datetime import datetime
 
-from .utils import Colors
-from .presenters import StatePresenter
+from ..utils import Colors
+from ..presentation import StatePresenter
 
 
 class StateManager:
