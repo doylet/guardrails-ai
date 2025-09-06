@@ -11,6 +11,7 @@ from glob import glob
 from .utils import Colors
 from .plugin_system import PluginSystem
 from .config_manager import ConfigManager
+from .presenters import ComponentPresenter
 
 
 class ComponentManager:
@@ -205,35 +206,10 @@ class ComponentManager:
         """List what files would be installed for a component"""
         try:
             files = self.discover_files(component, manifest)
-            print(f"Component '{component}' would install {len(files)} files:")
-            for file in sorted(files):
-                print(f"  {file}")
+            ComponentPresenter.list_discovered_files(component, files)
         except ValueError as e:
             print(f"Error: {e}")
 
     def list_all_components(self, manifest: Dict):
         """List all available components grouped by source"""
-        # Separate base components from plugin components
-        base_components = {}
-        plugin_components = {}
-
-        for component, config in manifest['components'].items():
-            if self.plugin_system.is_plugin_component(component):
-                plugin_name = self.plugin_system.get_plugin_name_for_component(component)
-                if plugin_name not in plugin_components:
-                    plugin_components[plugin_name] = {}
-                plugin_components[plugin_name][component] = config
-            else:
-                base_components[component] = config
-
-        # Display base components
-        if base_components:
-            print("Base Components:")
-            for component, config in base_components.items():
-                print(f"  {component}: {config['description']}")
-
-        # Display plugin components grouped by plugin
-        for plugin_name, components in plugin_components.items():
-            print(f"\n{plugin_name} Plugin:")
-            for component, config in components.items():
-                print(f"  {component}: {config['description']}")
+        ComponentPresenter.list_all_components(manifest, self.plugin_system)

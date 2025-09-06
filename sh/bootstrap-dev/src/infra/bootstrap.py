@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 """
 Infrastructure Bootstrap Manager
-Core bootstrap functionality with modular architecture
+
+This module provides the main orchestrator class for AI guardrails infrastructure
+management. It composes various specialized managers to provide a unified interface
+for installation, configuration, and diagnostics.
+
+The InfrastructureBootstrap class follows a composition pattern, delegating
+specific responsibilities to focused manager classes while maintaining a clean
+public API for end users.
 """
 import yaml
 from pathlib import Path
@@ -13,6 +20,7 @@ from .plugin_system import PluginSystem
 from .component_manager import ComponentManager
 from .config_manager import ConfigManager
 from .doctor import Doctor
+from .presenters import ProfilePresenter
 
 
 class InfrastructureBootstrap:
@@ -134,9 +142,7 @@ class InfrastructureBootstrap:
 
     def list_all_profiles(self):
         """List all available profiles"""
-        print("Available profiles:")
-        for profile, config in self.merged_manifest['profiles'].items():
-            print(f"  {profile}: {config['description']}")
+        ProfilePresenter.list_all_profiles(self.merged_manifest)
 
     # Diagnostic functionality
     def doctor(self, focus: str = "all") -> bool:

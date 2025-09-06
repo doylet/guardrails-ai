@@ -9,6 +9,7 @@ from typing import Dict, List
 from datetime import datetime
 
 from .utils import Colors
+from .presenters import StatePresenter
 
 
 class StateManager:
@@ -79,35 +80,7 @@ class StateManager:
     def show_state(self):
         """Show current installation state"""
         state = self.load_state()
-
-        print(Colors.bold("AI Guardrails Installation State"))
-        print(Colors.info("=" * 50))
-
-        if state.get('installed_profile'):
-            print(f"Installed Profile: {state['installed_profile']}")
-        else:
-            print("No profile installed (manual component installation)")
-
-        installed_components = state.get('installed_components', [])
-        if installed_components:
-            print(f"Installed Components: {', '.join(installed_components)}")
-        else:
-            print("No components installed")
-
-        history = state.get('installation_history', [])
-        if history:
-            print(f"\nInstallation History ({len(history)} entries):")
-            for entry in history[-3:]:
-                action = entry.get('action', 'unknown')
-                timestamp = entry.get('timestamp', 'unknown')
-                if action == 'install_profile':
-                    profile = entry.get('profile', 'unknown')
-                    print(f"  {timestamp}: Installed profile '{profile}'")
-                elif action == 'install_component':
-                    component = entry.get('component', 'unknown')
-                    print(f"  {timestamp}: Installed component '{component}'")
-
-        print()
+        StatePresenter.show_state(state)
 
     def get_installed_components(self) -> List[str]:
         """Get list of installed components"""
