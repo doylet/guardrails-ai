@@ -9,9 +9,8 @@ import logging
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Optional
 
-from ..domain.constants import CLI_WIDTH
 
 
 class StructuredFormatter(logging.Formatter):

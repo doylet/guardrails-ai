@@ -20,6 +20,13 @@ from .logging import (
     get_logger,
     configure_logging,
 )
+from .receipts import (
+    Receipt,
+    ReceiptsAdapter,
+)
+from .yaml_ops import (
+    YamlOpsAdapter,
+)
 
 __all__ = [
     # Filesystem operations
@@ -34,4 +41,9 @@ __all__ = [
     # Logging
     "get_logger",
     "configure_logging",
+    # Receipts
+    "Receipt",
+    "ReceiptsAdapter",
+    # YAML operations
+    "YamlOpsAdapter",
 ]

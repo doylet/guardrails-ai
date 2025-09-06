@@ -177,20 +177,18 @@ Examples:
     )
 
     # Plan command
-    plan_parser = subparsers.add_parser(
+    subparsers.add_parser(
         "plan",
         help="Show installation plan without making changes",
         description="Generate and display the installation plan showing what files would be installed, modified, or skipped.",
     )
 
     # Install command
-    install_parser = subparsers.add_parser(
+    subparsers.add_parser(
         "install",
         help="Install AI guardrails components",
         description="Install the specified profile and components to the target directory.",
-    )
-
-    # Doctor command
+    )    # Doctor command
     doctor_parser = subparsers.add_parser(
         "doctor",
         help="Validate and repair installation",

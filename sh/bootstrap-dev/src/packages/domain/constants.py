@@ -5,7 +5,6 @@ used throughout the system. These values can be overridden through configuration
 but provide sensible defaults for most use cases.
 """
 
-from pathlib import Path
 
 
 # Core directory structure

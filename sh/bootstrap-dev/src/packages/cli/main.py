@@ -5,7 +5,6 @@ logging configuration, and command execution through the orchestrator.
 """
 
 import sys
-from pathlib import Path
 
 from .args import parse_args, validate_args
 from ..adapters.logging import configure_logging, get_logger
@@ -219,8 +218,6 @@ def execute_list(orchestrator: "Orchestrator", args) -> bool:
     Returns:
         True if successful, False otherwise
     """
-    logger = get_logger(__name__)
-
     if args.profiles or not any([args.components, args.installed]):
         # List profiles (default)
         profiles = orchestrator.list_profiles()

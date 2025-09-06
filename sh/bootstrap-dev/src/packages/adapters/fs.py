@@ -5,9 +5,7 @@ backup, and rollback capabilities. All operations use sentinel files to
 prevent accidental deletion of user data.
 """
 
-import os
 import shutil
-import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator, Optional, Union
