@@ -383,17 +383,18 @@ class InfrastructureBootstrap:
                 # Create target directory
                 target_path.parent.mkdir(parents=True, exist_ok=True)
 
-                # Check if file exists and handle merge/overwrite
-                if target_path.exists() and not force:
-                    if self._should_merge_file(src_path, target_path):
-                        merge_target = self._get_merge_target_path(src_path, target_path)
-                        print(f"  merging: {rel_file} -> {merge_target.relative_to(self.target_dir)}")
-                        self._merge_yaml_file(src_path, merge_target)
+                # Get the final target path (may be different for .example files)
+                final_target = self._get_merge_target_path(src_path, target_path)
+
+                # Check if final target exists and handle merge/overwrite
+                if final_target.exists() and not force:
+                    if self._should_merge_file(src_path, final_target):
+                        print(f"  merging: {rel_file} -> {final_target.relative_to(self.target_dir)}")
+                        self._merge_yaml_file(src_path, final_target)
                     else:
                         print(f"  {Colors.warn('[SKIP]')} exists: {rel_file}")
                         continue
                 else:
-                    final_target = self._get_merge_target_path(src_path, target_path)
                     final_target.parent.mkdir(parents=True, exist_ok=True)
                     print(f"  copying: {rel_file} -> {final_target.relative_to(self.target_dir)}")
                     shutil.copy2(src_path, final_target)
