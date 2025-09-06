@@ -12,6 +12,32 @@ from typing import Union
 from ..domain.constants import HASH_ALGORITHM
 
 
+class HashingAdapter:
+    """Adapter for consistent hashing operations."""
+
+    def hash_file(self, file_path: Path) -> str:
+        """Calculate SHA256 hash of a file.
+
+        Args:
+            file_path: Path to file to hash
+
+        Returns:
+            SHA256 hex digest string
+        """
+        return sha256_file(file_path)
+
+    def hash_content(self, content: Union[str, bytes]) -> str:
+        """Calculate SHA256 hash of content.
+
+        Args:
+            content: Content to hash
+
+        Returns:
+            SHA256 hex digest string
+        """
+        return sha256_content(content)
+
+
 def sha256_file(file_path: Path) -> str:
     """Calculate SHA256 hash of a file.
 

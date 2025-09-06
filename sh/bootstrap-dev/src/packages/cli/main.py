@@ -36,10 +36,7 @@ def main() -> int:
         logger.debug(f"Starting {args.command} command with args: {args}")
 
         # Create and run orchestrator
-        orchestrator = Orchestrator(
-            target_dir=args.target_dir,
-            manifest_path=args.manifest_path,
-        )
+        orchestrator = Orchestrator(target_dir=args.target_dir)
 
         # Execute command
         result = execute_command(orchestrator, args)
@@ -119,10 +116,10 @@ def execute_plan(orchestrator: "Orchestrator", args) -> bool:
     logger = get_logger(__name__)
     logger.info("Generating installation plan...")
 
-    plan = orchestrator.create_plan(
+    plan = orchestrator.plan(
         profile=args.profile,
-        components=args.components,
-        force=args.force,
+        template_repo=getattr(args, 'template_repo', None),
+        plugins_dir=getattr(args, 'plugins_dir', None),
     )
 
     # Display plan based on output format
@@ -157,16 +154,24 @@ def execute_install(orchestrator: "Orchestrator", args) -> bool:
     else:
         logger.info("Installing AI guardrails...")
 
-        result = orchestrator.install(
+        results = orchestrator.install(
             profile=args.profile,
-            components=args.components,
+            template_repo=getattr(args, 'template_repo', None),
+            plugins_dir=getattr(args, 'plugins_dir', None),
+            dry_run=args.dry_run,
             force=args.force,
         )
 
-        if result:
-            logger.info("Installation completed successfully")
+        # Check if all components succeeded
+        success = all(results.values())
 
-        return result
+        if success:
+            logger.info("Installation completed successfully")
+        else:
+            failed_components = [comp for comp, result in results.items() if not result]
+            logger.error(f"Installation failed for components: {', '.join(failed_components)}")
+
+        return success
 
 
 def execute_doctor(orchestrator: "Orchestrator", args) -> bool:
@@ -182,30 +187,34 @@ def execute_doctor(orchestrator: "Orchestrator", args) -> bool:
     logger = get_logger(__name__)
     logger.info("Running diagnostic checks...")
 
-    issues = orchestrator.diagnose()
+    diagnostics = orchestrator.doctor(
+        components=getattr(args, 'components', None),
+        repair=args.repair,
+        dry_run=getattr(args, 'dry_run', False),
+    )
 
-    if not issues:
+    if not diagnostics:
         logger.info("✅ No issues detected")
         return True
 
-    # Display issues
-    logger.warning(f"Found {len(issues)} issues:")
-    for issue in issues:
-        logger.warning(f"  - {issue}")
+    # Display diagnostics
+    logger.warning(f"Found {len(diagnostics)} issues:")
+    for diagnostic in diagnostics:
+        print(f"  {diagnostic}")
+
+    # Check if any errors were found
+    has_errors = any(d.severity == "error" for d in diagnostics)
 
     if args.repair:
-        logger.info("Attempting to repair issues...")
-        repair_result = orchestrator.repair()
-
-        if repair_result:
-            logger.info("✅ Repair completed successfully")
-        else:
-            logger.error("❌ Repair failed")
-
-        return repair_result
+        # Repair was already attempted in the orchestrator.doctor() call
+        repairable_count = sum(1 for d in diagnostics if d.repairable)
+        if repairable_count > 0:
+            logger.info(f"Repair attempted for {repairable_count} issues")
+        return not has_errors  # Success if no errors remain
     else:
-        logger.info("Use --repair to automatically fix these issues")
-        return False
+        if any(d.repairable for d in diagnostics):
+            logger.info("Use --repair to automatically fix repairable issues")
+        return not has_errors  # Success if no errors found
 
 
 def execute_list(orchestrator: "Orchestrator", args) -> bool:
@@ -258,12 +267,20 @@ def execute_uninstall(orchestrator: "Orchestrator", args) -> bool:
     logger = get_logger(__name__)
     logger.info(f"Uninstalling components: {', '.join(args.components)}")
 
-    result = orchestrator.uninstall(components=args.components)
+    # Uninstall each component individually
+    results = []
+    for component in args.components:
+        result = orchestrator.uninstall(component)
+        results.append(result)
 
-    if result:
+    success = all(results)
+
+    if success:
         logger.info("Uninstallation completed successfully")
+    else:
+        logger.error("Some components failed to uninstall")
 
-    return result
+    return success
 
 
 def display_plan_text(plan, args) -> None:
@@ -274,7 +291,7 @@ def display_plan_text(plan, args) -> None:
         args: Command arguments for formatting options
     """
     # Colors (if not disabled)
-    if args.no_color:
+    if getattr(args, 'no_color', False):
         colors = {"reset": "", "green": "", "yellow": "", "red": "", "blue": ""}
     else:
         colors = {
@@ -287,30 +304,32 @@ def display_plan_text(plan, args) -> None:
 
     print(f"\n{colors['blue']}Installation Plan{colors['reset']}")
     print("=" * 50)
-    print(f"Components: {plan.component_count}")
-    print(f"Total files: {plan.total_files}")
-    print(f"Actionable files: {plan.actionable_files}")
-    print(f"Estimated size: {plan.estimated_size} bytes")
+    print(f"Profile: {plan.profile}")
+    print(f"Components: {len(plan.components)}")
+
+    total_files = sum(len(comp.file_actions) for comp in plan.components)
+    actionable_files = sum(1 for comp in plan.components for action in comp.file_actions if action.action_type != "SKIP")
+
+    print(f"Total files: {total_files}")
+    print(f"Actionable files: {actionable_files}")
     print()
 
-    for component in plan.components:
-        print(f"{colors['blue']}Component: {component.name}{colors['reset']}")
-        if component.plugin_id:
-            print(f"  Plugin: {component.plugin_id}")
-        print(f"  Files: {component.total_files} ({component.actionable_files} actionable)")
+    for component_plan in plan.components:
+        print(f"{colors['blue']}Component: {component_plan.component_id}{colors['reset']}")
+        print(f"  Files: {len(component_plan.file_actions)}")
 
-        for action in component.actions:
+        for action in component_plan.file_actions:
             # Color-code by action type
-            if action.kind == "COPY":
+            if action.action_type == "COPY":
                 color = colors["green"]
-            elif action.kind == "MERGE":
+            elif action.action_type == "MERGE":
                 color = colors["yellow"]
-            elif action.kind == "TEMPLATE":
+            elif action.action_type == "TEMPLATE":
                 color = colors["blue"]
             else:  # SKIP
                 color = colors["reset"]
 
-            print(f"    {color}{action.kind}{colors['reset']} {action.src} → {action.dst} ({action.reason})")
+            print(f"    {color}{action.action_type:8}{colors['reset']} {action.source_path} → {action.target_path} ({action.reason})")
 
         print()
 

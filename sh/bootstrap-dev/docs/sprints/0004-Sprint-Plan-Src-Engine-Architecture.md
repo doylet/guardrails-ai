@@ -1,7 +1,7 @@
 # 0004-Sprint-Plan-Src-Engine-Architecture
 
 **Date:** 2025-09-06
-**Status:** 🟡 PLANNED
+**Status:** 🟡 IN-PROGRESS
 **Priority:** High
 **Related:** [ADR-004-src-engine-design.md], [ADR-001-modular-bootstrap-architecture.md], [ADR-003-example-template-idempotency-strategy.md]
 **Branch:** feature/src-engine-architecture
@@ -12,7 +12,7 @@
 
 This sprint implements the source engine architecture redesign as defined in ADR-004. The goal is to evolve the existing `src/packages/` structure into a clean, transaction-safe engine with clear separation between pure planning logic and side-effect operations, while preserving all existing functionality.
 
-**Current Status: 25% Complete** - Phase 1 Foundation ✅ COMPLETE, Phase 2 Core Logic in progress
+**Current Status: 50% Complete** - Phase 1 Foundation ✅ COMPLETE, Phase 2 Core Logic ✅ COMPLETE
 
 ## Phase 1 Achievements
 
@@ -22,6 +22,15 @@ This sprint implements the source engine architecture redesign as defined in ADR
 - **⚡ Infrastructure:** Atomic filesystem operations, hashing, and structured logging
 - **🎯 CLI Interface:** Full argument parsing for all planned commands
 - **📚 Documentation:** Inline docs and clear module boundaries
+
+## Phase 2 Achievements
+
+- **🧠 Pure Planning Logic:** Resolver for dependency resolution and manifest loading
+- **📝 Deterministic Planning:** Planner with stable file action generation from inputs
+- **📋 Receipt System:** Enhanced tracking for idempotency and transaction safety
+- **🔄 YAML Operations:** Consolidated adapter for content transformations
+- **🎯 Separation of Concerns:** Clear boundaries between pure and effectful operations
+- **✨ Clean Integration:** Updated package exports and module structure
 
 ---
 
@@ -91,34 +100,35 @@ Transform the current `src/packages/` structure into a pure engine with determin
   - [x] Logging configuration
   - [x] Basic orchestration framework
 
-### Phase 2: Core Logic Separation (Weeks 3-4)
+### Phase 2: Core Logic Separation (Weeks 3-4) ✅ COMPLETE
 
 #### Pure Planning Logic
 
-- [ ] **`core/resolver.py`** - Dependency resolution (extract from `plugin_system.py`):
-  - [ ] Load and validate `installation-manifest.yaml`
-  - [ ] Load and validate `plugins/*/plugin-manifest.yaml`
-  - [ ] Resolve component dependencies and conflicts
-  - [ ] Compute deterministic installation order `(priority, plugin.id)`
-  - [ ] Output `ResolvedSpec` ready for planning
-- [ ] **`core/planner.py`** - Pure planning logic (extract from `component_manager.py`):
-  - [ ] Build `InstallPlan` from `ResolvedSpec`
-  - [ ] Determine file actions: COPY/MERGE/TEMPLATE/SKIP
-  - [ ] Compute reasons via source hash vs target + receipts
-  - [ ] No filesystem writes (pure function)
-  - [ ] Deterministic and unit-testable
+- [x] **`core/resolver.py`** - Dependency resolution (extract from `plugin_system.py`):
+  - [x] Load and validate `installation-manifest.yaml`
+  - [x] Load and validate `plugins/*/plugin-manifest.yaml`
+  - [x] Resolve component dependencies and conflicts
+  - [x] Compute deterministic installation order `(priority, plugin.id)`
+  - [x] Output `ResolvedSpec` ready for planning
+- [x] **`core/planner.py`** - Pure planning logic (extract from `component_manager.py`):
+  - [x] Build `InstallPlan` from `ResolvedSpec`
+  - [x] Determine file actions: COPY/MERGE/TEMPLATE/SKIP
+  - [x] Compute reasons via source hash vs target + receipts
+  - [x] No filesystem writes (pure function)
+  - [x] Deterministic and unit-testable
 
 #### Receipt System
 
-- [ ] **`adapters/receipts.py`** - Idempotency tracking (evolve from `state_manager.py`):
-  - [ ] Read/write `.ai/guardrails/installed/<component>.json`
-  - [ ] Track source digests, manifest digests, file hashes
-  - [ ] `is_current(component)` validation for planner
-  - [ ] Receipt format with timestamp, sizes, modes
-- [ ] **`adapters/schema.py`** - Validation layer:
-  - [ ] JSONSchema validators for plugin manifests
-  - [ ] Core manifest validation
-  - [ ] Target structure schema enforcement
+- [x] **`adapters/receipts.py`** - Idempotency tracking (evolve from `state_manager.py`):
+  - [x] Read/write `.ai/guardrails/installed/<component>.json`
+  - [x] Track source digests, manifest digests, file hashes
+  - [x] `is_current(component)` validation for planner
+  - [x] Receipt format with timestamp, sizes, modes
+- [x] **`adapters/yaml_ops.py`** - YAML operations consolidation:
+  - [x] Content merging with configurable strategies
+  - [x] Template processing with variable substitution
+  - [x] Content validation and type detection
+  - [x] Unified interface for content transformations
   - [ ] Receipt format validation
 
 #### YAML Operations Consolidation

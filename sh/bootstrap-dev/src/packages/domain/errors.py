@@ -152,3 +152,75 @@ class TransactionError(BootstrapError):
         self.component = component
         self.operation = operation
         self.rollback_available = rollback_available
+
+
+class InstallationError(BootstrapError):
+    """Raised when component installation fails.
+
+    This error occurs when the installation engine fails to install one or more
+    components, potentially requiring rollback of completed components.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        component: Optional[str] = None,
+        completed_components: Optional[List[str]] = None,
+    ) -> None:
+        details = {
+            "component": component,
+            "completed_components": completed_components or [],
+        }
+        super().__init__(message, "INSTALLATION_ERROR", details)
+        self.component = component
+        self.completed_components = completed_components or []
+
+
+class OrchestrationError(BootstrapError):
+    """Raised when high-level orchestration operations fail.
+
+    This error occurs when the orchestrator fails to coordinate between
+    resolver, planner, installer, or doctor components.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        operation: str,
+        component: Optional[str] = None,
+        profile: Optional[str] = None,
+    ) -> None:
+        details = {
+            "operation": operation,
+            "component": component,
+            "profile": profile,
+        }
+        super().__init__(message, "ORCHESTRATION_ERROR", details)
+        self.operation = operation
+        self.component = component
+        self.profile = profile
+
+
+class RepairError(BootstrapError):
+    """Raised when repair operations fail.
+
+    This error occurs when the doctor system fails to repair detected issues
+    with installed components.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        component: str,
+        repair_type: str,
+        recoverable: bool = True,
+    ) -> None:
+        details = {
+            "component": component,
+            "repair_type": repair_type,
+            "recoverable": recoverable,
+        }
+        super().__init__(message, "REPAIR_ERROR", details)
+        self.component = component
+        self.repair_type = repair_type
+        self.recoverable = recoverable
