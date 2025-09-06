@@ -123,7 +123,7 @@ def main() -> int:
     # Show discovered gate workflows
     if not GATE_WORKFLOWS:
         print("WARNING: No gate workflows discovered in src/plugins/*/(.github|templates/.github)/workflows/")
-        print("Expected workflow files like commit-message.yml, root-hygiene.yml, etc.")
+        print("Expected workflow files like commit-message.yaml, root-hygiene.yaml, etc.")
         return 1
 
     print(f"Discovered {len(GATE_WORKFLOWS)} gate workflows:")

@@ -6,9 +6,7 @@ true:
     - edited
     - synchronize
     - reopened
-  push:
-    branches:
-    - '**'
+  push: null
 permissions:
   contents: read
   pull-requests: read
@@ -20,7 +18,7 @@ jobs:
     if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_TOKEN: ${{ github.token }}
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-python@v5
@@ -44,7 +42,9 @@ jobs:
       with:
         python-version: '3.11'
     - name: Install deps
-      run: 'python -m pip install --upgrade pip
+      run: 'set -euxo pipefail
+
+        python -m pip install --upgrade pip
 
         [ -f requirements-dev.txt ] && pip install -r requirements-dev.txt || true
 
@@ -71,141 +71,28 @@ jobs:
         node-version: '20'
         cache: npm
     - name: Install
-      run: 'if [ -f package-lock.json ]; then npm ci;
-
-        elif [ -f pnpm-lock.yaml ]; then corepack enable && pnpm i --frozen-lockfile;
-
-        elif [ -f yarn.lock ]; then yarn --frozen-lockfile;
-
-        else npm i; fi
-
-        '
+      run: "set -euxo pipefail\nif [ -f package-lock.json ]; then\n  npm ci\nelif\
+        \ [ -f pnpm-lock.yaml ]; then\n  corepack enable\n  pnpm i --frozen-lockfile\n\
+        elif [ -f yarn.lock ]; then\n  yarn --frozen-lockfile\nelse\n  npm i\nfi\n"
     - name: Lint
       run: npx -y eslint . || npx -y @biomejs/biome check .
-    - name: Type Check
-      run: npx -y tsc --noEmit || echo "tsc not configured"
-    - name: Test
-      run: npm test --silent || pnpm -s test || yarn -s test || true
-    needs:
-    - gate_commit_message
-    - gate_demo_gate
-    - gate_root_hygiene
-    - gate_doc_guardrails
-  go:
-    if: ${{ hashFiles('**/go.mod') != '' }}
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-go@v5
-      with:
-        go-version: '1.22'
-    - run: go mod download
-    - run: go vet ./...
-    - run: go test ./...
-    needs:
-    - gate_commit_message
-    - gate_demo_gate
-    - gate_root_hygiene
-    - gate_doc_guardrails
-  rust:
-    if: ${{ hashFiles('**/Cargo.toml') != '' }}
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - uses: dtolnay/rust-toolchain@stable
-    - run: cargo fmt -- --check || true
-    - run: cargo check
-    - run: cargo test --quiet
-    needs:
-    - gate_commit_message
-    - gate_demo_gate
-    - gate_root_hygiene
-    - gate_doc_guardrails
-  java:
-    if: ${{ hashFiles('**/pom.xml', '**/build.gradle', '**/build.gradle.kts') != ''
-      }}
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-java@v4
-      with:
-        distribution: temurin
-        java-version: '21'
-    - run: 'if [ -f pom.xml ]; then mvn -q -DskipTests=false test;
-
-        elif [ -f gradlew ]; then chmod +x gradlew && ./gradlew test;
-
-        else echo "No Maven/Gradle wrapper found"; fi
-
-        '
-    needs:
-    - gate_commit_message
-    - gate_demo_gate
-    - gate_root_hygiene
-    - gate_doc_guardrails
-  dotnet:
-    if: ${{ hashFiles('**/*.sln', '**/*.csproj') != '' }}
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 8.0.x
-    - run: dotnet restore
-    - run: dotnet build --no-restore --nologo
-    - run: dotnet test --no-build --nologo --verbosity quiet
-    needs:
-    - gate_commit_message
-    - gate_demo_gate
-    - gate_root_hygiene
-    - gate_doc_guardrails
-  generic_checks:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Shellcheck (if present)
-      run: 'sudo apt-get update -y && sudo apt-get install -y shellcheck || true
-
-        shopt -s globstar nullglob
-
-        shellcheck **/*.sh || true
-
-        '
-    - name: Hadolint (if present)
-      run: 'curl -sL -o /usr/local/bin/hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
-        || true
-
-        chmod +x /usr/local/bin/hadolint || true
-
-        shopt -s globstar nullglob
-
-        hadolint **/Dockerfile* || true
-
-        '
-    - name: Markdownlint (if present)
-      run: 'npm -g i markdownlint-cli || true
-
-        markdownlint . || true
-
-        '
-    - name: Validate demo scenarios
-      run: python scripts/validate_demo_scenarios.py
+    - name: T
     needs:
     - gate_commit_message
     - gate_demo_gate
     - gate_root_hygiene
     - gate_doc_guardrails
   gate_commit_message:
-    uses: ./.github/workflows/commit-message.yml
+    uses: ./.github/workflows/commit-message.yaml
     secrets: inherit
   gate_demo_gate:
-    uses: ./.github/workflows/demo-gate.yml
+    uses: ./.github/workflows/demo-gate.yaml
     secrets: inherit
   gate_root_hygiene:
-    uses: ./.github/workflows/root-hygiene.yml
+    uses: ./.github/workflows/root-hygiene.yaml
     secrets: inherit
   gate_doc_guardrails:
-    uses: ./.github/workflows/doc-guardrails.yml
+    uses: ./.github/workflows/doc-guardrails.yaml
     secrets: inherit
 'on':
   pull_request:

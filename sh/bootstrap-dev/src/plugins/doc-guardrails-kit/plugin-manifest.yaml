@@ -25,7 +25,7 @@ components:
   doc-workflows:
     description: GitHub Actions workflows
     file_patterns:
-    - .github/workflows/doc-guardrails.yml
+    - .github/workflows/doc-guardrails.yaml
   doc-config:
     description: AI Guardrails config
     file_patterns:
