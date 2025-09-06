@@ -1,24 +1,72 @@
-Great q. Since you’re shipping a single CLI (installed to `~/.local/bin/...`) that **installs into the PWD** and you’re consolidating the installed layout under `./.ai/…`, the `src/` tree should be the **engine** only: pure Python that plans, validates, and applies installs; plus the built-in assets (templates) and first-party plugins it knows how to copy.
+# ADR-004: Source Engine Architecture and Design
 
-Here’s an idiomatic, low-friction `src/` design that fits what you have now (keeps your “infra” vibe), but tightens roles and boundaries.
+**Date:** 2025-09-06
+**Status:** Proposed
+**Deci### **Migration Effort**: Moderate refactoring of current `src/packages/` structure (not complete rewrite)ers:** Development Team, Bootstrap System Architects
+**Technical Story:** Restructure src/ directory as pure engine with clean separation of concerns
 
-# Top-level shape (engine + payloads)
+---
+
+## Context
+
+The current `src/packages/` structure already provides a good foundation as the engine, but needs refinement to establish clearer boundaries between pure planning logic and side-effect operations. As we ship a single CLI that installs into the PWD and consolidate the installed layout under `./.ai/`, we need to evolve the existing structure into a **pure engine** with better separation of concerns.
+
+### Current Structure Analysis
+```
+src/packages/               # Current engine (equivalent to proposed infra/)
+├── core/bootstrap.py       # Main orchestrator ✅
+├── managers/               # Component management ✅
+│   ├── component_manager.py
+│   ├── config_manager.py
+│   ├── plugin_system.py
+│   └── state_manager.py
+├── operations/             # YAML operations ✅
+│   ├── doctor.py
+│   └── yaml_operations.py
+└── utils/                  # Utilities ✅
+```
+
+### Current Issues
+- Mixed responsibilities between planning and execution in component_manager.py
+- No clear separation between pure and effectful operations
+- Lack of transactional safety for component installation
+- Missing receipt-driven idempotency tracking
+- No formal domain models or typed exceptions
+
+---
+
+## Decision
+
+We refactor the existing `src/packages/` structure to implement clean separation of concerns while preserving the working system. The current `packages/` becomes our engine with better-defined roles and boundaries.
+
+### **Evolved Structure (Engine + Payloads)**
 
 ```
 bootstrap-dev/
   src/
-    infra/                       # the engine (pure python, no project writes here)
-      cli/
+    packages/                    # Evolved engine (renamed to infra/ in future)
+      cli/                       # NEW: CLI parsing and coordination
         __init__.py
         main.py                  # entry: plan/install/uninstall/list/doctor
         args.py
-      core/
-        planner.py               # builds an InstallPlan (pure)
-        installer.py             # executes an InstallPlan (side effects)
-        resolver.py              # loads manifests, resolves deps, detects conflicts
-        orchestrator.py          # ties resolver→planner→installer; handles --dry-run/--plan
-        doctor.py                # drift, schema, deps/conflicts checks; --repair
-      adapters/                  # IO/infra details behind small interfaces
+      core/                      # REFINED: Pure application logic
+        bootstrap.py             # → orchestrator.py (rename)
+        planner.py               # NEW: builds InstallPlan (pure)
+        installer.py             # NEW: executes InstallPlan (side effects)
+        resolver.py              # NEW: manifest loading/deps/conflicts
+      managers/                  # → adapters/ (rename & refactor)
+        component_manager.py     # SPLIT: → planner.py + installer.py
+        config_manager.py        # → adapters/yaml_ops.py
+        plugin_system.py         # → core/resolver.py
+        state_manager.py         # → adapters/receipts.py
+      operations/                # → adapters/ (merge)
+        doctor.py                # → core/doctor.py
+        yaml_operations.py       # → adapters/yaml_ops.py
+      domain/                    # NEW: Pure types and rules
+        model.py                 # dataclasses: Plugin, Component, FileAction, InstallPlan
+        errors.py                # typed exceptions (ConflictError, DepError, DriftError)
+        constants.py             # defaults (GUARDRAILS_DIR=".ai", hook names, etc.)
+      adapters/                  # NEW: IO/infra details behind small interfaces
         fs.py                    # atomic writes, staging/backup/promote, safe cleanup
         yaml_ops.py              # merge/template ops; single funnel for content edits
         git.py                   # (optional) commit-range diff helpers for CI usage
@@ -26,10 +74,6 @@ bootstrap-dev/
         hashing.py               # sha256 for source/target/manifest digests
         receipts.py              # read/write .ai/guardrails/installed/*.json (in target)
         logging.py               # structured logs; quiet/verbose control
-      domain/
-        model.py                 # dataclasses: Plugin, Component, FileAction, InstallPlan…
-        errors.py                # typed exceptions (ConflictError, DepError, DriftError…)
-        constants.py             # defaults (GUARDRAILS_DIR=".ai", hook names, etc.)
     ai-guardrails-templates/     # built-in payloads (copied into target on install)
       .githooks/                 # shims/dispatcher (referencing ./.ai/scripts/…)
       .github/workflows/
@@ -40,22 +84,34 @@ bootstrap-dev/
         plugin-manifest.yaml     # your current plugin manifest
         files/…                  # everything this plugin drops into a target
     installation-manifest.yaml   # your core manifest (components/profiles)
-    bin/
-      ai-guardrails-bootstrap    # tiny shim → `python -m infra.cli.main …`
 ```
-
-> **Boundary:** `infra/*` never touches your dev repo; it only reads manifests/assets under `src/` and writes to the **target** (PWD or `--target`) using the adapters. Assets under `ai-guardrails-templates/` + `plugins/*/files/` are the **payloads** copied into targets.
 
 ---
 
-# Responsibilities (quick mental model)
+## Consequences
 
-## domain/ (pure types & rules)
+### **Positive**
+
+1. **Clear Separation**: Pure planning logic separated from side effects
+2. **Transaction Safety**: Component-level staging/backup/rollback prevents corruption
+3. **Deterministic**: Plans are stable, logged, and testable
+4. **Idempotent**: Receipt tracking prevents unnecessary operations
+5. **Safe Cleanup**: Sentinel files prevent accidental deletions
+
+### **Negative/Risks**
+
+1. **Migration Effort**: Significant refactoring of current `src/packages/` structure
+2. **Complexity**: More abstraction layers may increase learning curve
+3. **Performance**: Additional validation and receipt tracking overhead
+
+### **Component Responsibilities**
+
+#### **domain/ (Pure Types & Rules)**
 
 * `InstallPlan`, `Component`, `FileAction(kind, src, dst, mode, reason)`, `Receipt`.
 * No IO. Deterministic, unit-testable.
 
-## core/ (application logic)
+#### **core/ (Application Logic)**
 
 * `resolver.py`:
 
@@ -79,7 +135,7 @@ bootstrap-dev/
 
 * CLI orchestration: `--plan`, `--dry-run`, `--force`, common logging, error mapping.
 
-## adapters/ (infrastructure details)
+#### **adapters/ (Infrastructure Details)**
 
 * `fs.py`: atomic\_write, safe\_mkdir, `with staging(component): …`, `promote()`, `rollback()`, **sentinel** file enforcement (only delete dirs you created this run).
 * `yaml_ops.py`: single merge/transform funnel for YAML/JSON. (No ad-hoc edits elsewhere.)
@@ -90,7 +146,9 @@ bootstrap-dev/
 
 ---
 
-# How this maps to your CLI behaviour
+## Implementation Plan
+
+### **CLI Behavior Examples**
 
 * `ai-guardrails plan --profile full`
 `orchestrator` `resolver` `planner` print the plan (no IO, deterministic).
@@ -102,7 +160,7 @@ Writes under target’s `./.ai/…` and other declared targets (e.g., `.githooks
 
 ---
 
-# Data shapes (sketch)
+### **Data Models**
 
 ```python
 # domain/model.py
@@ -137,7 +195,7 @@ Installer consumes `InstallPlan`; planner produces it; receipts mirror it.
 
 ---
 
-# Rules that keep `src/` tidy and reliable
+### **Architecture Rules**
 
 1. **PureEffectful split:**
 Planner/Resolver are pure; Installer/Doctor are the only writers.
@@ -159,32 +217,104 @@ Apply **target structure** schema before any write and after each component; fai
 
 ---
 
-# What to put in `ai-guardrails-templates/` and `plugins/`
+### **Payload Organization**
 
 * **Templates**: the **default payload** your engine can install (dispatcher hook, default workflows, default `.ai/guardrails/*` policy, core **policy scripts** that will live under the target’s `./.ai/scripts/policy/…`).
 * **Plugins**: each `<id>-kit/` keeps `plugin-manifest.yaml` + `files/…` tree; the engine copies from here into the target. (Same format you’re using todayjust ensure they now target `./.ai/scripts/...` etc.)
 
 ---
 
-# Minimal entrypoint wiring
+### **Entry Point Design**
 
 * `bin/ai-guardrails-bootstrap`:
 
   ```bash
   #!/usr/bin/env bash
-  exec python -m infra.cli.main "$@"
+  exec python -m packages.cli.main "$@"  # Updated from infra.cli.main
   ```
-* `infra/cli/main.py`:
+* `packages/cli/main.py`:
 
 * parses args calls `orchestrator.run(args)`.
 
 ---
 
-# Why this design works for your PWD installer
+---
+
+## Migration Strategy
+
+### **Current → Future Mapping**
+```
+# Existing (Working System)          # Evolved (Clean Architecture)
+src/packages/core/bootstrap.py    →  src/packages/core/orchestrator.py
+src/packages/managers/             →  Split across core/ + adapters/
+  component_manager.py             →    core/planner.py + core/installer.py
+  plugin_system.py                 →    core/resolver.py
+  config_manager.py                →    adapters/yaml_ops.py
+  state_manager.py                 →    adapters/receipts.py
+src/packages/operations/           →  Move to adapters/ + core/
+  yaml_operations.py               →    adapters/yaml_ops.py (merge)
+  doctor.py                        →    core/doctor.py
+```
+
+### **Phase 1: Foundation (Week 1-2)**
+- [ ] Create new directories: `domain/`, `adapters/`, `cli/`
+- [ ] Define domain models in `domain/model.py` (`InstallPlan`, `FileAction`, etc.)
+- [ ] Move existing code with minimal changes to new locations
+- [ ] Preserve all existing functionality during transition
+
+### **Phase 2: Core Logic Separation (Week 3-4)**
+- [ ] Split `component_manager.py` into pure `planner.py` + effectful `installer.py`
+- [ ] Extract resolution logic from `plugin_system.py` into `resolver.py`
+- [ ] Build transaction safety in `installer.py` with staging/backup/promote
+- [ ] Add receipt tracking in `adapters/receipts.py`
+
+### **Phase 3: Integration (Week 5-6)**
+- [ ] Rename `bootstrap.py` to `orchestrator.py` and wire new components
+- [ ] Update CLI (`bin/ai-guardrails-bootstrap`) to use new architecture
+- [ ] Ensure backward compatibility for existing installations
+- [ ] Add new CLI commands: `plan`, `--dry-run`
+
+### **Phase 4: Validation & Cleanup (Week 7-8)**
+- [ ] Comprehensive testing of transaction safety
+- [ ] Performance validation (ensure no regression)
+- [ ] Optional: Rename `packages/` to `infra/` for clarity
+- [ ] Documentation updates
+
+---
+
+## Success Metrics
+
+**Technical:**
+- Zero data loss during component installation
+- 100% transaction rollback success rate
+- Deterministic plans across identical environments
+- Receipt accuracy (hash validation)
+
+**User Experience:**
+- Clear `--plan` output showing intended changes
+- Successful `--dry-run` preview capability
+- Reliable `doctor --repair` functionality
+- < 2 second response time for planning
+
+---
+
+## Related Decisions
+
+- **ADR-001:** Modular Bootstrap Architecture - Foundation this builds upon
+- **ADR-003:** Example Template Idempotency Strategy - Will be implemented within this engine
+- **Future ADR:** Plugin API Standards - Will define interfaces for plugin manifests
+
+---
+
+## Why This Design Works
 
 * **Deterministic**: plan is stable, logged, and testable.
 * **Safe**: staging/backup/receipts + sentinel cleanup.
 * **Simple mental model**: payloads are just files under `src/ai-guardrails-templates` and `src/plugins/.../files`; engine is pure Python under `src/infra`.
 * **Aligned with `.ai/` consolidation**: all script references in payloads point at `./.ai/scripts/policy/...` so targets stay clean and hidden.
 
-If you want, I can sketch the exact module/function stubs (empty bodies + docstrings) for `infra/core/*` so you can drop them into your tree and let Copilot fill in implementation safely.
+---
+
+**Status:** 🟡 Awaiting Implementation
+**Next Review:** Post-Phase 1 completion
+**Owner:** Bootstrap System Team
