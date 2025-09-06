@@ -9,7 +9,7 @@ repos:
   rev: v4.6.0
 - hooks:
   - entry: ai/scripts/lang_lint.sh
-    exclude: ((^src/foo_test_project/*)|((.*\.py$)))|((.*\.py$))
+    exclude: (.*\.py$)
     id: lang-lint
     language: system
     name: language lint (auto-detect)
