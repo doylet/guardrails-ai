@@ -9,7 +9,7 @@ import sys
 from .args import parse_args, validate_args
 from ..adapters.logging import configure_logging, get_logger
 from ..core.orchestrator import Orchestrator
-from ..domain.errors import BootstrapError
+from ..domain.errors import BootstrapError, ConflictError, DepError, DriftError, ValidationError, InstallationError
 
 
 def main() -> int:
@@ -52,8 +52,11 @@ def main() -> int:
         logger = get_logger(__name__)
         logger.error(f"Bootstrap error: {e}")
 
+        # Display enhanced error information
+        display_enhanced_error(e, args)
+
         # Print structured error info if verbose
-        if hasattr(args, "verbose") and args.verbose and e.details:
+        if hasattr(args, "verbose") and args.verbose and hasattr(e, 'details') and e.details:
             logger.debug(f"Error details: {e.details}")
 
         return 1
@@ -332,6 +335,52 @@ def display_plan_text(plan, args) -> None:
             print(f"    {color}{action.action_type:8}{colors['reset']} {action.source_path} → {action.target_path} ({action.reason})")
 
         print()
+
+
+def display_enhanced_error(error: BootstrapError, args) -> None:
+    """Display enhanced error messages with resolution suggestions.
+
+    Args:
+        error: Bootstrap error to display
+        args: Parsed command arguments
+    """
+    print(f"\n❌ Error: {error}")
+
+    # Provide context-specific help
+    if isinstance(error, ConflictError):
+        print("\n💡 Resolution suggestions:")
+        print("  • Use --force to override existing files")
+        print("  • Check for conflicting component dependencies")
+        print("  • Review your profile configuration")
+
+    elif isinstance(error, DepError):
+        print("\n💡 Resolution suggestions:")
+        print("  • Check component dependencies in manifest files")
+        print("  • Verify all required plugins are available")
+        print("  • Use 'ai-guardrails list --components' to see available components")
+
+    elif isinstance(error, DriftError):
+        print("\n💡 Resolution suggestions:")
+        print("  • Use 'ai-guardrails doctor' to diagnose drift issues")
+        print("  • Use 'ai-guardrails doctor --repair' to fix drift automatically")
+        print("  • Use --force to ignore drift and proceed")
+
+    elif isinstance(error, ValidationError):
+        print("\n💡 Resolution suggestions:")
+        print("  • Check your installation manifest syntax")
+        print("  • Verify plugin manifest files are valid")
+        print("  • Use --verbose for detailed validation messages")
+
+    elif isinstance(error, InstallationError):
+        print("\n💡 Resolution suggestions:")
+        print("  • Check available disk space")
+        print("  • Verify write permissions in target directory")
+        print("  • Use --dry-run to preview changes first")
+
+    # Always show how to get more help
+    print("\n🔍 For more details, run with --verbose")
+    if not getattr(args, 'verbose', False):
+        print("💬 For troubleshooting help, see the documentation or run 'ai-guardrails doctor'")
 
 
 if __name__ == "__main__":

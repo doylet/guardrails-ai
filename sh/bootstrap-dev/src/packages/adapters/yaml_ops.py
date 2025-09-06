@@ -402,3 +402,293 @@ class YamlOpsAdapter:
         # Both must be the same mergeable type
         return (source_type == target_type and
                 source_type in ("yaml", "json"))
+
+    def validate_receipt_format(self, receipt_data: Dict[str, Any]) -> List[str]:
+        """Validate receipt format and return errors.
+
+        Args:
+            receipt_data: Receipt data dictionary to validate
+
+        Returns:
+            List of validation errors (empty if valid)
+        """
+        errors = []
+
+        # Required fields
+        required_fields = {
+            'component_id': str,
+            'installed_at': str,
+            'manifest_hash': str,
+            'files': list
+        }
+
+        for field, field_type in required_fields.items():
+            if field not in receipt_data:
+                errors.append(f"Missing required field: {field}")
+            elif not isinstance(receipt_data[field], field_type):
+                errors.append(f"Field '{field}' must be of type {field_type.__name__}")
+
+        # Validate component_id is not empty
+        if 'component_id' in receipt_data:
+            if not receipt_data['component_id'].strip():
+                errors.append("component_id cannot be empty")
+
+        # Validate manifest_hash format (should be SHA256 hex)
+        if 'manifest_hash' in receipt_data:
+            manifest_hash = receipt_data['manifest_hash']
+            if not isinstance(manifest_hash, str) or len(manifest_hash) != 64:
+                errors.append("manifest_hash must be 64-character SHA256 hex string")
+            elif not all(c in '0123456789abcdef' for c in manifest_hash.lower()):
+                errors.append("manifest_hash contains invalid characters")
+
+        # Validate installed_at timestamp format
+        if 'installed_at' in receipt_data:
+            try:
+                from datetime import datetime
+                datetime.fromisoformat(receipt_data['installed_at'].replace('Z', '+00:00'))
+            except ValueError:
+                errors.append("installed_at must be valid ISO timestamp")
+
+        # Validate files array
+        if 'files' in receipt_data and isinstance(receipt_data['files'], list):
+            for i, file_action in enumerate(receipt_data['files']):
+                if not isinstance(file_action, dict):
+                    errors.append(f"files[{i}] must be an object")
+                    continue
+
+                # Check required file action fields
+                required_file_fields = ['target_path', 'action_type', 'content_hash']
+                for field in required_file_fields:
+                    if field not in file_action:
+                        errors.append(f"files[{i}] missing required field: {field}")
+
+                # Validate action_type
+                if 'action_type' in file_action:
+                    valid_actions = {'copy', 'template', 'mkdir'}
+                    if file_action['action_type'] not in valid_actions:
+                        errors.append(f"files[{i}] invalid action_type: {file_action['action_type']}")
+
+        # Validate metadata if present
+        if 'metadata' in receipt_data and receipt_data['metadata'] is not None:
+            if not isinstance(receipt_data['metadata'], dict):
+                errors.append("metadata must be an object or null")
+
+        return errors
+
+    def render_template(self, template_path: str, variables: Dict[str, Any]) -> str:
+        """Render template file with variables (adapter interface for backwards compatibility).
+
+        Args:
+            template_path: Path to template file
+            variables: Variables for substitution
+
+        Returns:
+            Rendered content
+
+        Raises:
+            TransactionError: If template rendering fails
+        """
+        try:
+            template_content = Path(template_path).read_text(encoding="utf-8")
+            return self.process_template(template_content, variables)
+        except Exception as e:
+            raise TransactionError(
+                f"Template rendering failed for {template_path}: {e}",
+                "yaml_ops",
+                "render_template",
+            ) from e
+
+    def merge_configuration(
+        self,
+        base_config_path: Path,
+        overlay_configs: List[Path],
+        output_format: str = "yaml",
+        merge_strategy: str = "deep"
+    ) -> str:
+        """Merge multiple configuration files into a single output.
+
+        Args:
+            base_config_path: Base configuration file
+            overlay_configs: List of overlay configuration files
+            output_format: Output format ('yaml' or 'json')
+            merge_strategy: Merge strategy ('deep', 'shallow', 'replace')
+
+        Returns:
+            Merged configuration content
+
+        Raises:
+            TransactionError: If merge operation fails
+        """
+        try:
+            # Load base configuration
+            if base_config_path.exists():
+                base_content = base_config_path.read_text(encoding="utf-8")
+                base_type = self.get_content_type(base_config_path)
+
+                if base_type == "yaml":
+                    merged_data = yaml.safe_load(base_content) or {}
+                elif base_type == "json":
+                    merged_data = json.loads(base_content) if base_content.strip() else {}
+                else:
+                    raise ValueError(f"Unsupported base config format: {base_type}")
+            else:
+                merged_data = {}
+
+            # Apply overlay configurations
+            for overlay_path in overlay_configs:
+                if not overlay_path.exists():
+                    logger.warning(f"Overlay config not found: {overlay_path}")
+                    continue
+
+                overlay_content = overlay_path.read_text(encoding="utf-8")
+                overlay_type = self.get_content_type(overlay_path)
+
+                if overlay_type == "yaml":
+                    overlay_data = yaml.safe_load(overlay_content) or {}
+                elif overlay_type == "json":
+                    overlay_data = json.loads(overlay_content) if overlay_content.strip() else {}
+                else:
+                    logger.warning(f"Unsupported overlay format: {overlay_type} for {overlay_path}")
+                    continue
+
+                # Merge overlay into result
+                if merge_strategy == "replace":
+                    merged_data = overlay_data
+                elif merge_strategy == "shallow":
+                    merged_data = {**merged_data, **overlay_data}
+                else:  # deep merge
+                    merged_data = self._deep_merge(merged_data, overlay_data)
+
+            # Format output
+            if output_format == "json":
+                return json.dumps(merged_data, indent=2, sort_keys=True, ensure_ascii=False)
+            else:  # yaml
+                return yaml.dump(
+                    merged_data,
+                    default_flow_style=False,
+                    sort_keys=False,
+                    allow_unicode=True,
+                )
+
+        except Exception as e:
+            raise TransactionError(
+                f"Configuration merge failed: {e}",
+                "yaml_ops",
+                "merge_configuration",
+            ) from e
+
+    def validate_envelope_format(self, envelope_data: Dict[str, Any]) -> List[str]:
+        """Validate Copilot envelope format and return errors.
+
+        Args:
+            envelope_data: Envelope data dictionary to validate
+
+        Returns:
+            List of validation errors (empty if valid)
+        """
+        errors = []
+
+        # Required envelope fields
+        required_fields = ['discovery', 'plan', 'changes', 'validation']
+
+        for field in required_fields:
+            if field not in envelope_data:
+                errors.append(f"Missing required envelope field: {field}")
+
+        # Validate discovery section
+        if 'discovery' in envelope_data:
+            discovery = envelope_data['discovery']
+            if not isinstance(discovery, list):
+                errors.append("discovery must be an array")
+            else:
+                for i, item in enumerate(discovery):
+                    if not isinstance(item, dict):
+                        errors.append(f"discovery[{i}] must be an object")
+                        continue
+                    for req_field in ['path', 'evidence', 'why']:
+                        if req_field not in item:
+                            errors.append(f"discovery[{i}] missing field: {req_field}")
+
+        # Validate plan section
+        if 'plan' in envelope_data:
+            plan = envelope_data['plan']
+            if not isinstance(plan, list):
+                errors.append("plan must be an array")
+
+        # Validate changes section
+        if 'changes' in envelope_data:
+            changes = envelope_data['changes']
+            if not isinstance(changes, list):
+                errors.append("changes must be an array")
+            else:
+                for i, change in enumerate(changes):
+                    if not isinstance(change, dict):
+                        errors.append(f"changes[{i}] must be an object")
+                        continue
+                    if 'path' not in change:
+                        errors.append(f"changes[{i}] missing required field: path")
+
+        # Validate validation section
+        if 'validation' in envelope_data:
+            validation = envelope_data['validation']
+            if not isinstance(validation, dict):
+                errors.append("validation must be an object")
+
+        return errors
+        """Validate Copilot envelope format and return errors.
+
+        Args:
+            envelope_data: Envelope data dictionary to validate
+
+        Returns:
+            List of validation errors (empty if valid)
+        """
+        errors = []
+
+        # Required envelope fields
+        required_fields = ['discovery', 'plan', 'changes', 'validation']
+
+        for field in required_fields:
+            if field not in envelope_data:
+                errors.append(f"Missing required envelope field: {field}")
+
+        # Validate discovery section
+        if 'discovery' in envelope_data:
+            discovery = envelope_data['discovery']
+            if not isinstance(discovery, list):
+                errors.append("discovery must be an array")
+            else:
+                for i, item in enumerate(discovery):
+                    if not isinstance(item, dict):
+                        errors.append(f"discovery[{i}] must be an object")
+                        continue
+                    for req_field in ['path', 'evidence', 'why']:
+                        if req_field not in item:
+                            errors.append(f"discovery[{i}] missing field: {req_field}")
+
+        # Validate plan section
+        if 'plan' in envelope_data:
+            plan = envelope_data['plan']
+            if not isinstance(plan, list):
+                errors.append("plan must be an array")
+
+        # Validate changes section
+        if 'changes' in envelope_data:
+            changes = envelope_data['changes']
+            if not isinstance(changes, list):
+                errors.append("changes must be an array")
+            else:
+                for i, change in enumerate(changes):
+                    if not isinstance(change, dict):
+                        errors.append(f"changes[{i}] must be an object")
+                        continue
+                    if 'path' not in change:
+                        errors.append(f"changes[{i}] missing required field: path")
+
+        # Validate validation section
+        if 'validation' in envelope_data:
+            validation = envelope_data['validation']
+            if not isinstance(validation, dict):
+                errors.append("validation must be an object")
+
+        return errors
