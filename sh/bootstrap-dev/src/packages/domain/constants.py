@@ -18,6 +18,10 @@ DEFAULT_FILE_MODE = 0o644
 DEFAULT_DIR_MODE = 0o755
 EXECUTABLE_MODE = 0o755
 
+# File processing limits
+MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
+MAX_TEMPLATE_SIZE = 10 * 1024 * 1024  # 10MB
+
 # Default profile and component settings
 DEFAULT_PROFILE = "standard"
 BUILTIN_PLUGIN_ID = "__builtin__"
