@@ -18,8 +18,9 @@ class PluginSystem:
         self.plugins = {}
 
         # Plugins should come from the tool installation plugins directory
-        script_dir = Path(__file__).parent.parent.parent / "bin"
-        self.plugins_dir = script_dir.parent / "src" / "plugins"
+        # Path calculation: src/packages/managers -> src -> plugins
+        script_dir = Path(__file__).parent.parent.parent
+        self.plugins_dir = script_dir / "plugins"
 
         # Load plugins
         self.plugins = self.discover_plugins()

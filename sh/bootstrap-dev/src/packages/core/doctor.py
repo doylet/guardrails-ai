@@ -51,6 +51,8 @@ class Doctor:
         target_dir: Path,
         receipts_adapter: ReceiptsAdapter,
         hashing_adapter: HashingAdapter,
+        resolver=None,
+        template_repo=None,
     ):
         """Initialize doctor with required adapters.
 
@@ -58,10 +60,14 @@ class Doctor:
             target_dir: Target directory to validate
             receipts_adapter: Adapter for receipt operations
             hashing_adapter: Adapter for file hashing
+            resolver: Optional resolver for manifest operations
+            template_repo: Template repository path for base components
         """
         self.target_dir = target_dir
         self.receipts_adapter = receipts_adapter
         self.hashing_adapter = hashing_adapter
+        self.resolver = resolver
+        self.template_repo = template_repo
         self.logger = get_logger(__name__)
 
     def diagnose(
@@ -85,7 +91,7 @@ class Doctor:
         diagnostics = []
 
         # Get installed components
-        installed_components = self.receipts_adapter.list_receipts()
+        installed_components = self.receipts_adapter.list_installed_components()
 
         if components:
             # Filter to requested components
@@ -203,7 +209,7 @@ class Doctor:
         return diagnostics
 
     def _diagnose_orphaned_files(self, installed_components: List[str]) -> List[DoctorDiagnostic]:
-        """Find files that exist but aren't tracked by any receipt.
+        """Find files that exist but aren't tracked by any component.
 
         Args:
             installed_components: List of installed component names
@@ -214,13 +220,19 @@ class Doctor:
         diagnostics = []
 
         try:
-            # Collect all tracked files
+            # Collect tracked files from both receipts AND manifest definitions
             tracked_files = set()
+            
+            # Add files from receipts (already installed)
             for component in installed_components:
                 receipt = self.receipts_adapter.read_receipt(component)
                 if receipt:
                     for file_action in receipt.files:
                         tracked_files.add(file_action.target_path)
+
+            # Add files that SHOULD be tracked by manifest/plugin components
+            if self.resolver:
+                tracked_files.update(self._get_manifest_tracked_files())
 
             # Check common AI guardrails directories for orphaned files
             check_dirs = [
@@ -251,6 +263,104 @@ class Doctor:
             ))
 
         return diagnostics
+
+    def _get_manifest_tracked_files(self) -> Set[Path]:
+        """Get all files that should be tracked by manifest/plugin components.
+        
+        Returns:
+            Set of target file paths that are managed by components
+        """
+        tracked_files = set()
+        
+        try:
+            # Load base manifest and plugins
+            manifest = self.resolver._load_manifest()
+            plugins = self.resolver._load_plugins()
+            
+            # Process base manifest components
+            if 'components' in manifest:
+                tracked_files.update(self._expand_component_files(manifest['components'], None))
+            
+            # Process plugin components
+            for plugin_name, plugin_data in plugins.items():
+                plugin_manifest = plugin_data['manifest']
+                if 'components' in plugin_manifest:
+                    tracked_files.update(self._expand_component_files(
+                        plugin_manifest['components'], 
+                        plugin_data['path']
+                    ))
+                    
+        except Exception as e:
+            self.logger.warning(f"Failed to load manifest tracked files: {e}")
+            
+        return tracked_files
+    
+    def _expand_component_files(self, components: Dict, plugin_path: Optional[Path]) -> Set[Path]:
+        """Expand component file patterns to target paths.
+        
+        Args:
+            components: Dictionary of component definitions
+            plugin_path: Path to plugin directory (None for base components)
+            
+        Returns:
+            Set of target file paths for these components
+        """
+        from glob import glob
+        tracked_files = set()
+        
+        for comp_name, comp_config in components.items():
+            if 'file_patterns' not in comp_config:
+                continue
+                
+            # Determine source directory
+            if plugin_path:
+                source_dir = plugin_path
+            else:
+                # Base components use template repo (actual templates, not manifest location)
+                source_dir = self.template_repo if self.template_repo else self.resolver.template_repo
+                
+            # Get target prefix for path transformation
+            target_prefix = comp_config.get('target_prefix', '')
+            
+            # Expand each file pattern
+            for pattern in comp_config['file_patterns']:
+                # Find source files matching pattern
+                search_pattern = str(source_dir / pattern)
+                matching_files = glob(search_pattern, recursive=True)
+                
+                # For plugins, also try with templates/ prefix if no files found
+                if plugin_path and not matching_files:
+                    template_pattern = str(source_dir / "templates" / pattern)
+                    matching_files = glob(template_pattern, recursive=True)
+                
+                # Transform to target paths
+                for source_file in matching_files:
+                    source_path = Path(source_file)
+                    if source_path.is_file():
+                        # Calculate relative path from source directory
+                        try:
+                            relative_path = source_path.relative_to(source_dir)
+                            
+                            # Apply target_prefix transformation
+                            if target_prefix:
+                                # Remove target_prefix from the beginning if present
+                                path_str = str(relative_path)
+                                if path_str.startswith(target_prefix):
+                                    relative_path = Path(path_str[len(target_prefix):].lstrip('/'))
+                            
+                            # For plugins with templates/ structure, remove templates/ prefix
+                            if plugin_path and str(relative_path).startswith('templates/'):
+                                relative_path = Path(str(relative_path)[len('templates/'):])
+                            
+                            # Target path is relative to target_dir
+                            target_path = self.target_dir / relative_path
+                            tracked_files.add(target_path)
+                            
+                        except ValueError:
+                            # Skip files outside source directory
+                            continue
+                            
+        return tracked_files
 
     def _find_orphaned_in_directory(self, directory: Path, tracked_files: Set[Path]) -> List[Path]:
         """Find orphaned files in a specific directory.

@@ -126,6 +126,58 @@ class Resolver:
             manifest_digest=self._calculate_manifest_digest(manifest),
         )
 
+    def list_profiles(self) -> List[str]:
+        """List all available profiles from manifest and plugins.
+
+        Returns:
+            List of available profile names
+        """
+        try:
+            manifest = self._load_manifest()
+            plugins = self._load_plugins()
+            
+            # Get profiles from main manifest
+            profiles = set()
+            if "profiles" in manifest:
+                profiles.update(manifest["profiles"].keys())
+            
+            # Get profiles from plugins
+            for plugin_data in plugins.values():
+                plugin_manifest = plugin_data["manifest"]
+                if "profiles" in plugin_manifest:
+                    profiles.update(plugin_manifest["profiles"].keys())
+            
+            return sorted(list(profiles))
+        except Exception as e:
+            logger.error(f"Failed to list profiles: {e}")
+            return []
+
+    def list_components(self) -> List[str]:
+        """List all available components from manifest and plugins.
+
+        Returns:
+            List of available component names
+        """
+        try:
+            manifest = self._load_manifest()
+            plugins = self._load_plugins()
+            
+            # Get components from main manifest
+            components = set()
+            if "components" in manifest:
+                components.update(manifest["components"].keys())
+            
+            # Get components from plugins
+            for plugin_data in plugins.values():
+                plugin_manifest = plugin_data["manifest"]
+                if "components" in plugin_manifest:
+                    components.update(plugin_manifest["components"].keys())
+            
+            return sorted(list(components))
+        except Exception as e:
+            logger.error(f"Failed to list components: {e}")
+            return []
+
     def _load_manifest(self, manifest_path: Optional[Path] = None) -> Dict:
         """Load and validate installation manifest."""
         if manifest_path is None:
@@ -253,10 +305,19 @@ class Resolver:
         if not isinstance(manifest, dict):
             errors.append("Plugin manifest must be a dictionary")
 
-        required_fields = ["id", "name", "version"]
-        for field in required_fields:
-            if field not in manifest:
-                errors.append(f"Missing required field: {field}")
+        # Check for plugin metadata section
+        if "plugin" not in manifest:
+            errors.append("Missing required 'plugin' section")
+        else:
+            plugin_meta = manifest["plugin"]
+            if not isinstance(plugin_meta, dict):
+                errors.append("'plugin' section must be a dictionary")
+            else:
+                # Validate required fields in plugin section
+                required_fields = ["name", "version"]
+                for field in required_fields:
+                    if field not in plugin_meta:
+                        errors.append(f"Missing required field in plugin section: {field}")
 
         if "components" in manifest:
             components = manifest["components"]

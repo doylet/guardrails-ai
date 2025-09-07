@@ -5,6 +5,7 @@ logging configuration, and command execution through the orchestrator.
 """
 
 import sys
+from pathlib import Path
 
 from .args import parse_args, validate_args
 from ..adapters.logging import configure_logging, get_logger
@@ -121,8 +122,6 @@ def execute_plan(orchestrator: "Orchestrator", args) -> bool:
 
     plan = orchestrator.plan(
         profile=args.profile,
-        template_repo=getattr(args, 'template_repo', None),
-        plugins_dir=getattr(args, 'plugins_dir', None),
     )
 
     # Display plan based on output format
@@ -230,21 +229,39 @@ def execute_list(orchestrator: "Orchestrator", args) -> bool:
     Returns:
         True if successful, False otherwise
     """
-    if args.profiles or not any([args.components, args.installed]):
+    if args.list_profiles or not any([args.list_components, args.list_installed]):
         # List profiles (default)
         profiles = orchestrator.list_profiles()
         print("Available profiles:")
         for profile in profiles:
             print(f"  {profile}")
 
-    elif args.components:
-        # List components
-        components = orchestrator.list_components()
-        print("Available components:")
-        for component in components:
-            print(f"  {component}")
+    elif args.list_components:
+        # List components with rich formatting
+        try:
+            # Get the base manifest (without plugins merged)
+            base_manifest = orchestrator.resolver._load_manifest()
+            
+            # Create plugin system and component manager for rich display
+            from ..managers.plugin_system import PluginSystem
+            from ..presentation.presenters import ComponentPresenter
+            
+            plugin_system = PluginSystem(orchestrator.target_dir)
+            
+            # Get the merged manifest from plugin system for complete component list
+            merged_manifest = plugin_system.get_merged_manifest(base_manifest)
+            
+            # Use the rich component listing which knows how to separate plugin components
+            ComponentPresenter.list_all_components(merged_manifest, plugin_system)
+            
+        except Exception as e:
+            # Fallback to simple listing if rich formatting fails
+            components = orchestrator.list_components()
+            print("Available components:")
+            for component in components:
+                print(f"  {component}")
 
-    elif args.installed:
+    elif args.list_installed:
         # List installed components
         installed = orchestrator.list_installed()
         if installed:
@@ -317,6 +334,10 @@ def display_plan_text(plan, args) -> None:
     print(f"Actionable files: {actionable_files}")
     print()
 
+    # Display target directory structure
+    display_target_structure(plan, colors)
+    print()
+
     for component_plan in plan.components:
         print(f"{colors['blue']}Component: {component_plan.component_id}{colors['reset']}")
         print(f"  Files: {len(component_plan.file_actions)}")
@@ -335,6 +356,78 @@ def display_plan_text(plan, args) -> None:
             print(f"    {color}{action.action_type:8}{colors['reset']} {action.source_path} → {action.target_path} ({action.reason})")
 
         print()
+
+
+def display_target_structure(plan, colors) -> None:
+    """Display a tree view of the target directory structure.
+    
+    Args:
+        plan: InstallPlan object containing file actions
+        colors: Color formatting dictionary
+    """
+    print(f"{colors['blue']}Target Directory Structure{colors['reset']}")
+    print("-" * 30)
+    
+    # Collect all target paths from file actions
+    target_paths = []
+    for component in plan.components:
+        for action in component.file_actions:
+            if action.action_type != "SKIP":
+                target_paths.append(action.target_path)
+    
+    if not target_paths:
+        print("  (no files to install)")
+        return
+    
+    # Build directory tree
+    tree = {}
+    for path in target_paths:
+        parts = Path(path).parts
+        current = tree
+        for part in parts[:-1]:  # All but the last part (filename)
+            if part not in current:
+                current[part] = {}
+            current = current[part]
+        # Add the file
+        filename = parts[-1] if parts else path
+        current[filename] = None  # None indicates it's a file
+    
+    # Print the tree
+    _print_tree_recursive(tree, "", True, colors)
+
+
+def _print_tree_recursive(tree: dict, prefix: str, is_last: bool, colors: dict) -> None:
+    """Recursively print the tree structure.
+    
+    Args:
+        tree: Tree dictionary to print
+        prefix: Current indentation prefix
+        is_last: Whether this is the last item at this level
+        colors: Color formatting dictionary
+    """
+    items = list(tree.items())
+    for i, (name, subtree) in enumerate(items):
+        is_last_item = (i == len(items) - 1)
+        
+        # Choose the appropriate symbol
+        if is_last_item:
+            symbol = "└── "
+            next_prefix = prefix + "    "
+        else:
+            symbol = "├── "
+            next_prefix = prefix + "│   "
+        
+        # Color code files vs directories
+        if subtree is None:  # It's a file
+            display_name = f"{colors['green']}{name}{colors['reset']}"
+        else:  # It's a directory
+            display_name = f"{colors['blue']}{name}/{colors['reset']}"
+        
+        print(f"{prefix}{symbol}{display_name}")
+        
+        # Recursively print subdirectories
+        if subtree is not None:
+            _print_tree_recursive(subtree, next_prefix, is_last_item, colors)
 
 
 def display_enhanced_error(error: BootstrapError, args) -> None:

@@ -38,41 +38,41 @@ class Orchestrator:
 
         # Initialize adapters
         self.receipts_adapter = ReceiptsAdapter(self.target_dir)
-        self.yaml_ops = YamlOpsAdapter()
+        self.yaml_ops = YamlOpsAdapter(target_dir=self.target_dir)
         self.hashing_adapter = HashingAdapter()
 
         # Initialize core components
+        # The template repo and plugins are part of the bootstrap system, not the target
+        bootstrap_root = Path(__file__).parent.parent.parent.parent
         self.resolver = Resolver(
-            receipts_adapter=self.receipts_adapter,
-            yaml_ops=self.yaml_ops,
+            template_repo=bootstrap_root / "src",
+            plugins_dir=bootstrap_root / "src" / "plugins",
         )
         self.planner = Planner(
-            receipts_adapter=self.receipts_adapter,
-            hashing_adapter=self.hashing_adapter,
+            template_repo=bootstrap_root / "src" / "ai-guardrails-templates",
+            target_dir=self.target_dir,
         )
         self.installer = Installer(
             target_dir=self.target_dir,
             receipts_adapter=self.receipts_adapter,
             yaml_ops=self.yaml_ops,
         )
-        self.doctor = Doctor(
+        self.doctor_service = Doctor(
             target_dir=self.target_dir,
             receipts_adapter=self.receipts_adapter,
             hashing_adapter=self.hashing_adapter,
+            resolver=self.resolver,
+            template_repo=bootstrap_root / "src" / "ai-guardrails-templates",
         )
 
     def plan(
         self,
         profile: str = "default",
-        template_repo: Optional[Path] = None,
-        plugins_dir: Optional[Path] = None,
     ) -> InstallPlan:
         """Generate an installation plan for the specified profile.
 
         Args:
             profile: Profile name to install
-            template_repo: Path to template repository
-            plugins_dir: Path to plugins directory
 
         Returns:
             InstallPlan ready for execution
@@ -86,12 +86,14 @@ class Orchestrator:
             # Resolve dependencies and create resolved specification
             resolved_spec = self.resolver.resolve(
                 profile=profile,
-                template_repo=template_repo,
-                plugins_dir=plugins_dir,
             )
 
             # Generate installation plan
-            install_plan = self.planner.plan(resolved_spec)
+            install_plan = self.planner.create_plan(
+                resolved_spec,
+                profile=profile,
+                receipts_adapter=self.receipts_adapter
+            )
 
             self.logger.info(f"Plan generated with {len(install_plan.components)} components")
             return install_plan
@@ -130,8 +132,6 @@ class Orchestrator:
             # Generate plan
             install_plan = self.plan(
                 profile=profile,
-                template_repo=template_repo,
-                plugins_dir=plugins_dir,
             )
 
             if dry_run:
@@ -183,7 +183,7 @@ class Orchestrator:
             self.logger.info("Running health checks...")
 
             # Perform diagnosis
-            diagnostics = self.doctor.diagnose(
+            diagnostics = self.doctor_service.diagnose(
                 components=components,
                 include_drift=True,
                 include_missing=True,
@@ -191,7 +191,7 @@ class Orchestrator:
             )
 
             # Get summary
-            summary = self.doctor.get_health_summary(diagnostics)
+            summary = self.doctor_service.get_health_summary(diagnostics)
             self.logger.info(
                 f"Health check complete: {summary['error']} errors, "
                 f"{summary['warning']} warnings, {summary['info']} info, "
@@ -201,7 +201,7 @@ class Orchestrator:
             # Attempt repairs if requested
             if repair and summary['repairable'] > 0:
                 self.logger.info("Attempting repairs...")
-                repair_results = self.doctor.repair(
+                repair_results = self.doctor_service.repair(
                     diagnostics=diagnostics,
                     dry_run=dry_run,
                 )

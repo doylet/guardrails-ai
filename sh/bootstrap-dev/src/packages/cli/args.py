@@ -31,6 +31,11 @@ class BootstrapArgs:
     force: bool = False
     repair: bool = False
 
+    # List command flags (renamed to avoid conflicts)
+    list_profiles: bool = False
+    list_components: bool = False
+    list_installed: bool = False
+
     # Output configuration
     verbose: bool = False
     quiet: bool = False
@@ -259,15 +264,28 @@ def parse_args(args: Optional[List[str]] = None) -> BootstrapArgs:
     parsed = parser.parse_args(args)
 
     # Convert Namespace to BootstrapArgs
+    # Handle the conflict between global --components and list --components
+    if parsed.command == "list":
+        # For list command, use the boolean flags from the list subcommand
+        list_components_flag = getattr(parsed, "components", False)
+        global_components = []  # List command doesn't use global components
+    else:
+        # For other commands, use the global components list
+        list_components_flag = False
+        global_components = getattr(parsed, "components", None) or []
+    
     return BootstrapArgs(
         command=parsed.command,
         target_dir=parsed.target_dir,
         manifest_path=getattr(parsed, "manifest_path", None),
         profile=parsed.profile,
-        components=getattr(parsed, "components", None) or [],
+        components=global_components,
         dry_run=parsed.dry_run,
         force=parsed.force,
         repair=getattr(parsed, "repair", False),
+        list_profiles=getattr(parsed, "profiles", False),
+        list_components=list_components_flag,
+        list_installed=getattr(parsed, "installed", False),
         verbose=parsed.verbose,
         quiet=parsed.quiet,
         structured_logs=parsed.structured_logs,

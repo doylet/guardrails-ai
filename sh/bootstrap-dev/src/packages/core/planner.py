@@ -44,6 +44,7 @@ class Planner:
     def create_plan(
         self,
         resolved_spec: ResolvedSpec,
+        profile: str = "unknown",
         force: bool = False,
         receipts_adapter: Optional[object] = None,
     ) -> InstallPlan:
@@ -51,6 +52,7 @@ class Planner:
 
         Args:
             resolved_spec: Resolved components and dependencies
+            profile: Profile name this plan is for
             force: Force installation even if files are current
             receipts_adapter: Optional receipts adapter for current state
 
@@ -79,6 +81,7 @@ class Planner:
             estimated_size += self._estimate_component_size(component_plan)
 
         plan = InstallPlan(
+            profile=profile,
             components=component_plans,
             total_files=total_files,
             estimated_size=estimated_size,
@@ -117,9 +120,9 @@ class Planner:
         manifest_digest = self._calculate_component_digest(component_config)
 
         return ComponentPlan(
-            name=comp_name,
-            actions=file_actions,
-            manifest_digest=manifest_digest,
+            component_id=comp_name,
+            file_actions=file_actions,
+            manifest_hash=manifest_digest,
             plugin_id=component_config.get("_plugin_id"),
         )
 
@@ -193,9 +196,9 @@ class Planner:
         relative_dst = dst_path.relative_to(self.target_dir)
 
         return FileAction(
-            kind=action_kind,
-            src=relative_src,
-            dst=relative_dst,
+            action_type=action_kind,
+            source_path=relative_src,
+            target_path=relative_dst,
             mode=file_mode,
             reason=reason,
         )

@@ -31,6 +31,14 @@ components:
       - "templates/.github/**/*"
     target_prefix: "templates/"  # Remove 'templates/' prefix when installing
 
+  githooks:
+    description: "Modular git hooks infrastructure"
+    file_patterns:
+      - ".githooks/**/*"
+    post_install:
+      - "chmod +x .githooks/*"
+      - "git config core.hooksPath .githooks || true"  # Ignore if not in git repo
+
   precommit:
     description: "Pre-commit configuration"
     file_patterns:
@@ -52,11 +60,11 @@ profiles:
 
   standard:
     description: "Standard installation for most projects"
-    components: ["core", "schemas", "scripts", "precommit", "docs"]
+    components: ["core", "schemas", "scripts", "githooks", "precommit", "docs"]
 
   full:
     description: "Full installation with GitHub integration"
-    components: ["core", "schemas", "scripts", "github", "precommit", "docs"]
+    components: ["core", "schemas", "scripts", "githooks", "github", "precommit", "docs"]
 
 # Environment detection rules
 environment_detection:
