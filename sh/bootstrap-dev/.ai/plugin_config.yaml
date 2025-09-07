@@ -1,7 +1,6 @@
 enabled_plugins:
-- commit-msg-kit
-- doc-guardrails-kit
-- demos-on-rails-kit
 - root-hygiene-kit
 - copilot-acl-kit
 - repo-safety-kit
+- demos-on-rails-kit
+- doc-guardrails-kit
