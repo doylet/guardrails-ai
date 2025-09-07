@@ -1,7 +1,7 @@
 ---
 # Target Structure Schema
 # Defines the expected directory structure after AI Guardrails installation
-schema_version: "1.1.0"
+schema_version: "1.2.0"
 name: "ai-guardrails-target-structure"
 
 # Expected directory structure in target project
@@ -96,6 +96,34 @@ expected_structure:
     required: false
     description: "Pre-commit hooks configuration"
 
+  # Git hooks infrastructure (optional)
+  ".githooks/":
+    required: false
+    description: "Modular git hooks system"
+    subdirs:
+      "pre-commit.d/":
+        required: false
+        description: "Pre-commit hook scripts"
+      "commit-msg.d/":
+        required: false
+        description: "Commit message hook scripts"
+      "post-commit.d/":
+        required: false
+        description: "Post-commit hook scripts"
+    files:
+      "_run_hook":
+        required: false
+        description: "Modular hook runner script"
+      "pre-commit":
+        required: false
+        description: "Pre-commit hook (symlink to _run_hook)"
+      "commit-msg":
+        required: false
+        description: "Commit message hook (symlink to _run_hook)"
+      "post-commit":
+        required: false
+        description: "Post-commit hook (symlink to _run_hook)"
+
 # Validation rules
 validation:
   # Core requirements that must be satisfied
@@ -138,6 +166,7 @@ profiles:
       - ".ai/guardrails.yaml"
       - ".ai/schemas/copilot_envelope.schema.json"
       - ".ai/scripts/"
+      - ".githooks/"
       - "docs/"
       - ".pre-commit-config.yaml"
 
@@ -146,12 +175,19 @@ profiles:
       - ".ai/guardrails.yaml"
       - ".ai/schemas/copilot_envelope.schema.json"
       - ".ai/scripts/"
+      - ".githooks/"
       - ".github/workflows/"
       - "docs/"
       - ".pre-commit-config.yaml"
 
 # Evolution tracking
 version_history:
+  "1.2.0":
+    changes:
+      - "Added .githooks/ directory for modular git hooks system"
+      - "Updated standard and full profiles to include .githooks/"
+      - "Defined githooks subdirectory structure (.d/ directories for hooks)"
+      - "Added core git hook files (_run_hook, pre-commit, commit-msg, post-commit)"
   "1.1.0":
     changes:
       - "Consolidated all AI-related files under .ai/ directory"
