@@ -1,7 +1,7 @@
 ---
 # Target Structure Schema
 # Defines the expected directory structure after AI Guardrails installation
-schema_version: "1.0.0"
+schema_version: "1.1.0"
 name: "ai-guardrails-target-structure"
 
 # Expected directory structure in target project
@@ -10,27 +10,6 @@ expected_structure:
   ".ai/":
     required: true
     description: "Core AI guardrails configuration directory"
-    files:
-      "guardrails.yaml":
-        required: true
-        description: "Language-specific lint/test commands"
-        schema_ref: "guardrails.schema.yaml"
-      "envelope.json":
-        required: false
-        description: "Copilot planning envelope (auto-generated)"
-        schema_ref: ".ai/schemas/copilot_envelope.schema.json"
-      "guardrails/":
-        required: false
-        description: "Extended guardrails configuration"
-        files:
-          "root-allowlist.txt":
-            required: false
-            description: "Files allowed in repository root"
-
-  # AI automation directory
-  "ai/":
-    required: true
-    description: "AI automation scripts and schemas"
     subdirs:
       "schemas/":
         required: true
@@ -45,7 +24,22 @@ expected_structure:
         file_patterns:
           - "*.py"
           - "*.sh"
+      "guardrails/":
+        required: false
+        description: "Extended guardrails configuration"
+        files:
+          "root-allowlist.txt":
+            required: false
+            description: "Files allowed in repository root"
     files:
+      "guardrails.yaml":
+        required: true
+        description: "Language-specific lint/test commands"
+        schema_ref: "guardrails.schema.yaml"
+      "envelope.json":
+        required: false
+        description: "Copilot planning envelope (auto-generated)"
+        schema_ref: ".ai/schemas/copilot_envelope.schema.json"
       "capabilities.md":
         required: false
         description: "AI capabilities documentation"
@@ -114,7 +108,7 @@ validation:
   constraints:
     - name: "ai_directory_structure"
       description: "AI directories must follow standard layout"
-      rule: ".ai/ for config, ai/ for automation"
+      rule: ".ai/ for all AI-related configuration, schemas, and automation"
 
     - name: "schema_validation"
       description: "All JSON files must validate against their schemas"
@@ -158,6 +152,13 @@ profiles:
 
 # Evolution tracking
 version_history:
+  "1.1.0":
+    changes:
+      - "Consolidated all AI-related files under .ai/ directory"
+      - "Moved schemas from ai/schemas/ to .ai/schemas/"
+      - "Moved scripts from ai/scripts/ to .ai/scripts/"
+      - "Removed separate ai/ directory structure"
+      - "Updated validation rules to reflect single .ai/ structure"
   "1.0.0":
     changes:
       - "Initial target structure schema definition"
