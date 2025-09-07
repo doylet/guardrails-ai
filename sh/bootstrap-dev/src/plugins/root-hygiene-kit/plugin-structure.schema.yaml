@@ -1,0 +1,91 @@
+---
+# Plugin Structure Schema for root-hygiene-kit
+# Extracted from directory analysis on 2025-01-06
+
+schema_version: "1.0.0"
+plugin_name: "root-hygiene-kit"
+plugin_version: "1.0.0"
+
+# Structure provided by this plugin
+provides_structure:
+  directories:
+    - path: ".ai/guardrails"
+      type: "directory"
+      description: "Root hygiene policy and allowlist configuration"
+      required: true
+      
+    - path: ".ai/scripts"
+      type: "directory"
+      description: "Root hygiene installation and cleanup scripts"
+      required: true
+      
+    - path: ".ai/snippets"
+      type: "directory"
+      description: "Configuration snippets for root hygiene"
+      required: true
+      
+    - path: ".githooks/pre-commit.d"
+      type: "directory"
+      description: "Pre-commit hooks for root hygiene enforcement"
+      required: true
+      
+    - path: ".github/workflows"
+      type: "directory"
+      description: "GitHub workflows for root hygiene validation"
+      required: true
+
+  directory_contents:
+    ".ai/guardrails":
+      - path: "root-allowlist.txt"
+        type: "file"
+        description: "Allowlist of permitted files in repository root"
+        required: true
+        
+    ".ai/scripts":
+      - path: "install-root-guard.sh"
+        type: "file"
+        description: "Installation script for root hygiene guards"
+        required: true
+        executable: true
+        
+      - path: "sweep-working-files.sh"
+        type: "file"
+        description: "Script to clean up temporary and working files"
+        required: true
+        executable: true
+        
+    ".ai/snippets":
+      - path: "gitignore-root-hygiene.snippet"
+        type: "file"
+        description: "Gitignore snippet for root hygiene patterns"
+        required: true
+        
+    ".githooks/pre-commit.d":
+      - path: "91-root-hygiene-cleanup.sh"
+        type: "file"
+        description: "Pre-commit hook for root directory cleanup"
+        required: true
+        executable: true
+        
+    ".github/workflows":
+      - path: "root-hygiene.yaml"
+        type: "file"
+        description: "GitHub workflow for root hygiene validation"
+        required: true
+
+# Dependencies this plugin requires
+requires_structure:
+  directories:
+    - path: ".git"
+      description: "Git repository for hook installation and workflow integration"
+      
+# Potential conflicts with other plugins
+conflicts_with: []
+
+# Metadata
+metadata:
+  description: "Repository root directory hygiene and cleanup automation"
+  category: "housekeeping"
+  tags: ["cleanup", "hygiene", "organization", "hooks", "workflows"]
+  maintainer: "bootstrap-dev"
+  documentation: "plugin-manifest.yaml"

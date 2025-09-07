@@ -18,6 +18,7 @@ from ..utils import Colors
 from ..managers import StateManager, PluginSystem, ComponentManager, ConfigManager
 from ..operations import Doctor
 from ..presentation import ProfilePresenter
+from .target_structure_manager import TargetStructureManager
 
 
 class InfrastructureBootstrap:
@@ -41,6 +42,10 @@ class InfrastructureBootstrap:
         self.component_manager = ComponentManager(self.target_dir, self.template_repo, self.plugin_system)
         self.config_manager = ConfigManager(self.target_dir)
         self.doctor_manager = Doctor(self.target_dir, self.state_manager, self.component_manager)
+        
+        # Initialize target structure manager for schema composition
+        plugins_dir = script_dir.parent / "src" / "plugins"
+        self.target_structure_manager = TargetStructureManager(self.target_dir, plugins_dir)
 
         # Get merged manifest (including plugins)
         self.merged_manifest = self.plugin_system.get_merged_manifest(self.manifest)
@@ -182,3 +187,53 @@ class InfrastructureBootstrap:
 
         # Default to minimal for new projects
         return "minimal"
+
+    # Target Structure Management Methods
+    def get_target_structure_schema(self, enabled_plugins: List[str] = None) -> Dict:
+        """Get the composed target structure schema for enabled plugins."""
+        return self.target_structure_manager.get_composed_target_schema(enabled_plugins)
+    
+    def validate_target_structure(self) -> Dict:
+        """Validate current target directory against composed schema."""
+        return self.target_structure_manager.validate_target_structure()
+    
+    def get_structure_report(self) -> Dict:
+        """Get comprehensive structure and plugin analysis report."""
+        return self.target_structure_manager.generate_structure_report()
+    
+    def invalidate_structure_cache(self):
+        """Invalidate the target structure schema cache."""
+        self.target_structure_manager.invalidate_cache()
+    
+    # Enhanced Plugin Management Methods
+    def enable_plugin(self, plugin_name: str) -> bool:
+        """Enable a specific plugin and update schema composition."""
+        success = self.plugin_system.enable_plugin(plugin_name)
+        if success:
+            # Invalidate cache since plugin enablement changed
+            self.invalidate_structure_cache()
+            # Refresh merged manifest
+            self.merged_manifest = self.plugin_system.get_merged_manifest(self.manifest)
+        return success
+    
+    def disable_plugin(self, plugin_name: str) -> bool:
+        """Disable a specific plugin and update schema composition."""
+        success = self.plugin_system.disable_plugin(plugin_name)
+        if success:
+            # Invalidate cache since plugin enablement changed
+            self.invalidate_structure_cache()
+            # Refresh merged manifest
+            self.merged_manifest = self.plugin_system.get_merged_manifest(self.manifest)
+        return success
+    
+    def get_plugin_installation_order(self, requested_plugins: List[str] = None) -> List[str]:
+        """Get plugins in dependency-resolved installation order."""
+        return self.plugin_system.get_plugin_installation_order(requested_plugins)
+    
+    def validate_plugin_selection(self, plugins: List[str]) -> Dict:
+        """Validate plugin selection for conflicts and dependencies."""
+        return self.plugin_system.validate_plugin_selection(plugins)
+    
+    def get_plugin_analysis(self) -> Dict:
+        """Get comprehensive plugin analysis and dependency information."""
+        return self.plugin_system.get_plugin_analysis()

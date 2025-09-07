@@ -1,0 +1,89 @@
+---
+# Plugin Structure Schema for doc-guardrails-kit
+# Extracted from directory analysis on 2025-01-06
+
+schema_version: "1.0.0"
+plugin_name: "doc-guardrails-kit"
+plugin_version: "1.0.0"
+
+# Structure provided by this plugin
+provides_structure:
+  directories:
+    - path: ".ai"
+      type: "directory"
+      description: "AI guardrails configuration and scripts"
+      required: true
+      
+    - path: ".ai/scripts"
+      type: "directory"
+      description: "Documentation validation scripts"
+      required: true
+      
+    - path: ".github/workflows"
+      type: "directory"
+      description: "GitHub workflows for documentation validation"
+      required: true
+      
+    - path: "docs"
+      type: "directory"
+      description: "Documentation structure and templates"
+      required: true
+      
+    - path: "docs/templates"
+      type: "directory"
+      description: "Documentation templates and examples"
+      required: true
+      
+    - path: "docs/validation"
+      type: "directory"
+      description: "Documentation validation guides and rules"
+      required: true
+
+  directory_contents:
+    ".ai":
+      - path: "guardrails.yaml"
+        type: "file"
+        description: "AI guardrails configuration for documentation"
+        required: true
+        
+    ".ai/scripts":
+      - path: "validate_docs.py"
+        type: "file"
+        description: "Documentation validation and linting script"
+        required: true
+        executable: true
+        
+    ".github/workflows":
+      - path: "doc-guardrails.yaml"
+        type: "file"
+        description: "GitHub workflow for documentation validation"
+        required: true
+        
+    "docs/templates":
+      - path: "example.md"
+        type: "file"
+        description: "Example documentation template"
+        required: true
+        
+    "docs/validation":
+      - path: "README.md"
+        type: "file"
+        description: "Documentation validation guide and rules"
+        required: true
+
+# Dependencies this plugin requires
+requires_structure:
+  directories:
+    - path: ".git"
+      description: "Git repository for workflow integration"
+      
+# Potential conflicts with other plugins
+conflicts_with: []
+
+# Metadata
+metadata:
+  description: "Documentation validation and quality guardrails"
+  category: "documentation"
+  tags: ["docs", "validation", "quality", "templates", "workflows"]
+  maintainer: "bootstrap-dev"
+  documentation: "docs/validation/README.md"
