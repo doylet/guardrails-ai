@@ -111,6 +111,9 @@ expected_structure:
       "commit-msg.d/":
         required: false
         description: "Commit message hook scripts"
+      "post-commit.d/":
+        required: false
+        description: "Post-commit hook scripts"
     files:
       "_run_hook":
         required: false
@@ -121,6 +124,9 @@ expected_structure:
       "commit-msg":
         required: false
         description: "Commit message hook (symlink to _run_hook)"
+      "post-commit":
+        required: false
+        description: "Post-commit hook (symlink to _run_hook)"
 
 # Validation rules
 validation:

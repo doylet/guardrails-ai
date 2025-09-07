@@ -1,0 +1,83 @@
+plugin:
+  name: copilot-acl-kit
+  version: 1.0.0
+  description: Access Control List enforcement for repository files and workflows
+  author: AI Guardrails Team
+  dependencies:
+  - core
+  - scripts
+  - githooks
+  environment:
+    detects:
+    - git
+    - python
+    - yaml
+    requires:
+    - git
+    - python3
+components:
+  acl-policy:
+    description: ACL policy configuration
+    file_patterns:
+    - .ai/guardrails/copilot-acl.yaml
+  acl-scripts:
+    description: ACL validation scripts
+    file_patterns:
+    - .ai/scripts/policy/acl_check.py
+  acl-hooks:
+    description: Git hooks for ACL enforcement
+    file_patterns:
+    - .githooks/pre-commit.d/copilot-acl.sh
+  acl-workflows:
+    description: GitHub workflows for ACL enforcement
+    file_patterns:
+    - .github/workflows/copilot-acl.yaml
+  acl-installer:
+    description: ACL installation script
+    file_patterns:
+    - scripts/install-acl.sh
+profiles:
+  acl-basic:
+    description: Basic ACL enforcement with local hooks and policy
+    components:
+    - acl-policy
+    - acl-scripts
+    - acl-hooks
+  acl-full:
+    description: Full ACL enforcement including GitHub workflows
+    components:
+    - acl-policy
+    - acl-scripts
+    - acl-hooks
+    - acl-workflows
+    - acl-installer
+configuration:
+  target_structure_extensions:
+    .ai/guardrails/:
+      files:
+        copilot-acl.yaml:
+          required: false
+          description: Access control list policy configuration
+    .ai/scripts/policy/:
+      files:
+        acl_check.py:
+          required: false
+          description: ACL validation script
+    .githooks/pre-commit.d/:
+      files:
+        copilot-acl.sh:
+          required: false
+          description: Pre-commit ACL validation hook
+    .github/workflows/:
+      files:
+        copilot-acl.yaml:
+          required: false
+          description: GitHub workflow for ACL enforcement
+post_install:
+- bash scripts/install-acl.sh
+hooks:
+  pre_commit:
+    category: security
+    priority: 50
+    script: 35-copilot-acl-main.sh
+    description: Migrated from copilot-acl.sh

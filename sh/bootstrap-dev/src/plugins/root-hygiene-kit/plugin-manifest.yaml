@@ -1,46 +1,40 @@
-# AI Guardrails Bootstrap - Plugin Manifest
-# Plugin: Root Hygiene Kit
-# Description: Root directory organization and cleanup tools
-
 plugin:
-  name: "root-hygiene-kit"
-  version: "1.0.0"
-  description: "Root directory organization and cleanup tools"
-  author: "AI Guardrails Team"
-
-  # Plugin dependencies (other plugins or base components)
+  name: root-hygiene-kit
+  version: 1.0.0
+  description: Root directory organization and cleanup tools
+  author: AI Guardrails Team
   dependencies:
-    - "core"
-
-  # Plugin-specific environment detection
+  - core
   environment:
-    detects: ["git"]
-    requires: ["git"]
-
-# Plugin file patterns (following same structure as main manifest)
+    detects:
+    - git
+    requires:
+    - git
 components:
   root-hygiene:
-    description: "Root directory cleanup and organization tools"
+    description: Root directory cleanup and organization tools
     file_patterns:
-      - ".githooks/**/*"
-      - ".ai/guardrails/**/*"
-      - ".ai/scripts/**/*"
-      - "ai/snippets/**/*"
-
+    - .githooks/**/*
+    - .ai/guardrails/**/*
+    - .ai/scripts/**/*
+    - ai/snippets/**/*
   github-hygiene:
-    description: "GitHub workflows for root hygiene"
+    description: GitHub workflows for root hygiene
     file_patterns:
-      - ".github/**/*"
-
-# Plugin profiles (groups of components that work together)
+    - .github/**/*
 profiles:
   root-hygiene-standard:
-    description: "Standard root hygiene setup with hooks and scripts"
+    description: Standard root hygiene setup with hooks and scripts
     components:
-      - "root-hygiene"
-
+    - root-hygiene
   root-hygiene-full:
-    description: "Full root hygiene setup including GitHub workflows"
+    description: Full root hygiene setup including GitHub workflows
     components:
-      - "root-hygiene"
-      - "github-hygiene"
+    - root-hygiene
+    - github-hygiene
+hooks:
+  pre_commit:
+    category: cleanup
+    priority: 10
+    script: 91-root-hygiene-cleanup.sh
+    description: Migrated from 10-root-hygiene.sh

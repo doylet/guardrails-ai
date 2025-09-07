@@ -1,0 +1,78 @@
+plugin:
+  name: repo-safety-kit
+  version: 1.0.0
+  description: Repository backup and safety tools to protect against data loss
+  author: AI Guardrails Team
+  dependencies:
+  - core
+  - scripts
+  - githooks
+  environment:
+    detects:
+    - git
+    - bash
+    requires:
+    - git
+    - bash
+components:
+  repo-backup-scripts:
+    description: Repository backup and mirroring scripts
+    file_patterns:
+    - .ai/scripts/make-local-mirror.sh
+    - .ai/scripts/backup-bundle.sh
+    - .ai/scripts/install-repo-safety.sh
+  repo-safety-hooks:
+    description: Git hooks for automatic backup
+    file_patterns:
+    - .githooks/post-commit.d/*.sh
+  repo-safety-vscode:
+    description: VS Code settings for repo safety
+    file_patterns:
+    - .vscode/settings.json
+profiles:
+  repo-safety-basic:
+    description: Basic repository safety with backup scripts
+    components:
+    - repo-backup-scripts
+  repo-safety-auto:
+    description: Automatic repository safety with hooks
+    components:
+    - repo-backup-scripts
+    - repo-safety-hooks
+  repo-safety-full:
+    description: Full repository safety including VS Code integration
+    components:
+    - repo-backup-scripts
+    - repo-safety-hooks
+    - repo-safety-vscode
+configuration:
+  target_structure_extensions:
+    .ai/scripts/:
+      files:
+        make-local-mirror.sh:
+          required: false
+          description: Create/update local bare mirror repository
+        backup-bundle.sh:
+          required: false
+          description: Create rotating git bundles for backup
+        install-repo-safety.sh:
+          required: false
+          description: Repository safety installation script
+    .githooks/:
+      files:
+        post-commit:
+          required: false
+          description: Automatic backup after each commit
+    .vscode/:
+      files:
+        settings.json:
+          required: false
+          description: VS Code settings for repository safety
+post_install:
+- bash .ai/scripts/install-repo-safety.sh
+hooks:
+  pre_commit:
+    category: cleanup
+    priority: 10
+    script: 91-repo-safety-backup.sh
+    description: Migrated from 10-repo-safety.sh
