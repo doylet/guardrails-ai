@@ -5,6 +5,7 @@ Handles target structure composition and validation using plugin schemas.
 
 Part of Sprint 007: Plugin Schema Decoupling
 Task 2.1: Bootstrap integration points
+Task 2.3: Enhanced composition logic and conflict resolution
 """
 
 import json
@@ -12,7 +13,7 @@ import yaml
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
-from .schema_composer import SchemaComposer
+from .schema_composer import SchemaComposer, MergeStrategy, ConflictResolutionPolicy, CompositionResult
 from ..utils import Colors
 
 
@@ -85,18 +86,98 @@ class TargetStructureManager:
         
         return plugin_structures
     
-    def get_composed_target_schema(self, enabled_plugins: Optional[List[str]] = None) -> Dict[str, Any]:
+    def get_composed_target_schema(self, 
+                                  enabled_plugins: Optional[List[str]] = None,
+                                  merge_strategy: Optional[MergeStrategy] = None,
+                                  conflict_policy: Optional[ConflictResolutionPolicy] = None,
+                                  plugin_dependencies: Optional[Dict[str, List[str]]] = None) -> Dict[str, Any]:
         """
-        Get the composed target structure schema.
+        Get the composed target structure schema with enhanced composition logic.
         
         Args:
             enabled_plugins: List of plugin names to include. If None, includes all.
+            merge_strategy: Strategy for handling conflicts during composition
+            conflict_policy: Detailed conflict resolution policy
+            plugin_dependencies: Plugin dependency information for ordering
         
         Returns:
             Composed target structure schema
         """
-        if not self._cache_invalidated and self._composed_schema_cache:
+        # Use cache if no custom strategies and cache is valid
+        if (not self._cache_invalidated and self._composed_schema_cache and 
+            merge_strategy is None and conflict_policy is None):
             return self._composed_schema_cache
+        
+        # Discover all plugins if none specified
+        if enabled_plugins is None:
+            enabled_plugins = self._discover_all_plugin_names()
+        
+        # Compose schema using enhanced logic
+        result = self.compose_schema_with_strategy(
+            enabled_plugins=enabled_plugins,
+            merge_strategy=merge_strategy,
+            conflict_policy=conflict_policy,
+            plugin_dependencies=plugin_dependencies
+        )
+        
+        if result.success:
+            # Cache only if using default strategies
+            if merge_strategy is None and conflict_policy is None:
+                self._composed_schema_cache = result.composed_schema
+                self._cache_invalidated = False
+            return result.composed_schema
+        else:
+            print(f"{Colors.error('[ERROR]')} Schema composition failed:")
+            for conflict in result.conflicts:
+                print(f"  - {conflict}")
+            return self.load_base_target_schema()
+    
+    def compose_schema_with_strategy(self,
+                                   enabled_plugins: List[str],
+                                   merge_strategy: Optional[MergeStrategy] = None,
+                                   conflict_policy: Optional[ConflictResolutionPolicy] = None,
+                                   plugin_dependencies: Optional[Dict[str, List[str]]] = None,
+                                   dry_run: bool = False) -> CompositionResult:
+        """
+        Compose schema using specified strategies and policies.
+        
+        Args:
+            enabled_plugins: List of plugin names to include
+            merge_strategy: Strategy for handling conflicts
+            conflict_policy: Detailed conflict resolution policy
+            plugin_dependencies: Plugin dependency information
+            dry_run: If True, don't cache the result
+            
+        Returns:
+            CompositionResult with detailed information about the composition
+        """
+        # Use defaults if not provided
+        merge_strategy = merge_strategy or MergeStrategy.UNION
+        conflict_policy = conflict_policy or ConflictResolutionPolicy()
+        
+        return self.schema_composer.compose_target_schema(
+            enabled_plugins=enabled_plugins,
+            dry_run=dry_run,
+            merge_strategy=merge_strategy,
+            conflict_policy=conflict_policy,
+            plugin_dependencies=plugin_dependencies
+        )
+    
+    def _discover_all_plugin_names(self) -> List[str]:
+        """Discover all plugin names in the plugins directory."""
+        plugin_names = []
+        
+        if not self.plugins_dir.exists():
+            return plugin_names
+        
+        for plugin_dir in self.plugins_dir.iterdir():
+            if plugin_dir.is_dir():
+                # Check if plugin has structure schema
+                structure_file = plugin_dir / "plugin-structure.schema.yaml"
+                if structure_file.exists():
+                    plugin_names.append(plugin_dir.name)
+        
+        return plugin_names
         
         # Load base schema
         base_schema = self.load_base_target_schema()
