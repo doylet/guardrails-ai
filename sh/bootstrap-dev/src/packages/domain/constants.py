@@ -22,6 +22,10 @@ EXECUTABLE_MODE = 0o755
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
 MAX_TEMPLATE_SIZE = 10 * 1024 * 1024  # 10MB
 
+# Hook execution limits
+DEFAULT_HOOK_TIMEOUT = 300  # 5 minutes
+MAX_HOOK_MEMORY = 512 * 1024 * 1024  # 512MB
+
 # Default profile and component settings
 DEFAULT_PROFILE = "standard"
 BUILTIN_PLUGIN_ID = "__builtin__"

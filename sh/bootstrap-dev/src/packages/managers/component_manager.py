@@ -101,6 +101,61 @@ class ComponentManager:
             print(f"{Colors.error('[ERROR]')} {e}")
             return False
 
+    def install_enhanced_plugin(self, plugin_manifest_path: Path, selected_components: List[str] = None,
+                              configuration: Dict = None, dry_run: bool = False, force: bool = False) -> bool:
+        """
+        Install plugin using enhanced plugin architecture.
+
+        This method integrates with the new enhanced plugin installer for Phase 2+ plugins
+        that use the new manifest format with lifecycle hooks and template processing.
+        """
+        try:
+            from ..adapters.enhanced_plugin_installer import EnhancedPluginInstaller, PluginInstallationContext
+            from ..domain.plugin_models import PluginManifest
+            import yaml
+
+            # Load plugin manifest
+            with open(plugin_manifest_path) as f:
+                manifest_data = yaml.safe_load(f)
+
+            # Convert to enhanced manifest object
+            manifest = PluginManifest.from_dict(manifest_data)
+
+            # Create installer
+            plugin_path = plugin_manifest_path.parent
+            installer = EnhancedPluginInstaller(plugin_path, self.target_dir)
+
+            # Create installation context
+            context = PluginInstallationContext(
+                plugin_path=plugin_path,
+                target_path=self.target_dir,
+                manifest=manifest,
+                configuration=configuration or {},
+                selected_components=selected_components,
+                dry_run=dry_run,
+                force=force,
+                skip_hooks=False
+            )
+
+            # Install plugin
+            result = installer.install_plugin(context)
+
+            if result.success:
+                print(f"{Colors.success('[SUCCESS]')} Enhanced plugin installed: {manifest.name}")
+                if result.installed_components:
+                    print(f"  Installed components: {', '.join(result.installed_components)}")
+            else:
+                print(f"{Colors.error('[ERROR]')} Enhanced plugin installation failed: {result.error_message}")
+
+            return result.success
+
+        except ImportError:
+            print(f"{Colors.warn('[WARN]')} Enhanced plugin installer not available, falling back to legacy")
+            return False
+        except Exception as e:
+            print(f"{Colors.error('[ERROR]')} Enhanced plugin installation failed: {e}")
+            return False
+
     def _install_single_file(self, component: str, rel_file: str, force: bool, manifest: Dict) -> bool:
         """Install a single file for a component"""
         try:
