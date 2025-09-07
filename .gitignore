@@ -1,3 +1,8 @@
 git/BMAD-METHOD/
 git/awesome-copilot/
 git/system-prompts-and-models-of-ai-tools/
+
+sh/bin/guardrails/**
+
+
+.DS_Store

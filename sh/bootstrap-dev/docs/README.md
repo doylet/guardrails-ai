@@ -1,68 +1,151 @@
-# Documentation Index
+# AI Guardrails Bootstrap - Source & Development
 
-**AI Guardrails Bootstrap Development Documentation**
+> **Source repository for AI guardrails bootstrap system development**
 
-This directory contains all development documentation organized by category.
-
----
-
-## 📁 **Directory Structure**
-
-### **📚 [guides/](guides/)**
-User and developer guides for using and contributing to the bootstrap system:
-- `deployment-guide.md` - How to build, install, and distribute the bootstrap
-- `migration-guide.md` - Migrating from old to new versions
-- `ai_guardrails_integration.md` - Integrating AI guardrails into projects
-- `copilot_demo_rails.md` - GitHub Copilot demo setup guide
-- `NAMING-CONVENTIONS.md` - Project naming standards
-
-### **🏭 [operations/](operations/)**
-Operational runbooks and procedures:
-- `DEPLOYMENT.md` - Production deployment runbook
-
-### **✅ [validation/](validation/)**
-Testing, validation, and verification documentation:
-- `validation-checklist.md` - Pre-release validation checklist
-- `validation-results.md` - Test results and validation reports  
-- `verification-2024-01-03.md` - Historical verification record
-
-### **🎯 [decisions/](decisions/)**
-Architecture Decision Records (ADRs):
-- `ADR-001-modular-bootstrap-architecture.md` - Modular design decision
-- `ADR-002-project-structure-reorganization.md` - Structure reorganization
-- `0000-ADR-template.md` - Template for new ADRs
-
-### **🏃‍♂️ [sprints/](sprints/)**
-Sprint planning and development iterations:
-- Sprint plans and retrospectives
-- Development milestones and progress tracking
-
-### **🏢 [coe/](coe/)**
-Center of Excellence templates and standards:
-- Templates for organizational adoption
-- Best practices and standards
-
-### **🔧 [artifacts/](artifacts/)**
-Agent work artifacts and generated outputs:
-- `0001_summary_2025-09-04_14-14-11.md` - Infrastructure-as-Code migration summary
-- Other agent-generated analysis and reports
+**🏭 Source Status:** This is the SOURCE workspace where the bootstrap system is developed
+**📦 Binary Location:** `../bootstrap-bin/` contains the deployed installation
+**🎯 Purpose:** Source control, development, testing, and building of the bootstrap system
 
 ---
 
-## 📋 **Documentation Standards**
+## 🗂️ **Development Structure**
 
-- **Guides**: How-to documentation for users and developers
-- **Operations**: Production procedures and runbooks  
-- **Validation**: Testing and quality assurance documentation
-- **Decisions**: Architectural and design decisions with rationale
-- **Sprints**: Development planning and progress tracking
-- **Artifacts**: Generated content from automated tools and agents
+```
+bootstrap-dev/                         # 🏭 SOURCE & DEVELOPMENT WORKSPACE
+├── src/                               # 📦 Source code and templates
+│   ├── ai_guardrails_bootstrap.sh             # Production wrapper (Infrastructure-as-Code)
+│   └── ai-guardrails-templates/               # Template repository (source)
+├── tests/                             # 🧪 Development test suites
+├── docs/                              # � Development documentation  
+├── DEVELOPMENT.md                     # 🛠️ Developer guide
+├── pyproject.toml                     # � Python project configuration
+└── README.md                          # This file (source workspace)
+```
 
 ---
 
-## 🔍 **Quick Links**
+## 🎯 **What This Workspace Contains**
 
-- **Getting Started**: [guides/deployment-guide.md](guides/deployment-guide.md)
-- **Migration Help**: [guides/migration-guide.md](guides/migration-guide.md)  
-- **Latest Changes**: [artifacts/0001_summary_2025-09-04_14-14-11.md](artifacts/0001_summary_2025-09-04_14-14-11.md)
-- **Architecture**: [decisions/ADR-001-modular-bootstrap-architecture.md](decisions/ADR-001-modular-bootstrap-architecture.md)
+### **Source Code (`src/`)**
+- **Main Script:** `ai_guardrails_bootstrap_modular.sh` - The modular bootstrap system
+- **Legacy Script:** `ai_guardrails_bootstrap_unified.sh` - Original monolithic version
+- **Templates:** `ai-guardrails-templates/` - Template files distributed to user projects
+
+### **Testing (`tests/`)**
+- **Unit Tests:** Bootstrap script functionality validation
+- **Integration Tests:** End-to-end template deployment testing
+- **Network Tests:** Template fetching and fallback scenarios
+
+### **Documentation (`docs/`)**
+- **Architecture Decisions:** ADR documents for design choices
+- **Sprint Plans:** Development iteration planning
+- **Deployment Guides:** Build and distribution procedures
+
+### **Distribution (`dist/`)**
+- **Releases:** Versioned builds ready for distribution
+- **Release Notes:** Version history and changelog
+
+---
+
+## 🏭 **Development vs Applied Environment**
+
+### **🏭 Development (THIS workspace):**
+```bash
+cd bootstrap-dev/
+./src/ai_guardrails_bootstrap_modular.sh --help    # Development version
+./tests/run_all_tests.sh                          # Run test suite
+```
+
+### **🎯 Applied Guardrails (Parent directory):**
+```bash
+cd ../                                   # Consumer environment
+ls .ai/ ai/ .github/                    # Applied guardrail files
+cat .ai/envelope.json                   # Applied configuration
+```
+
+---
+
+## 🚀 **Development Workflow**
+
+### **Setup Development Environment**
+```bash
+cd bootstrap-dev/
+./tests/run_all_tests.sh                # Validate everything works
+./src/ai_guardrails_bootstrap_modular.sh --doctor  # Test script functionality
+```
+
+### **Testing Changes**
+```bash
+# Test in clean environment
+mkdir /tmp/test-project && cd /tmp/test-project
+git init
+/path/to/bootstrap-dev/src/ai_guardrails_bootstrap_modular.sh --apply
+
+# Validate applied guardrails
+ls .ai/ ai/ .github/                    # Check applied files
+```
+
+### **Building Releases**
+```bash
+cd bootstrap-dev/
+./scripts/build-release.sh v1.1.0      # Build new release
+ls dist/releases/v1.1.0/               # Verify artifacts
+```
+
+---
+
+## 🔍 **Functionality Verification**
+
+### **Unified vs Modular Comparison**
+- **Unified Script:** 1,044 lines with embedded templates (legacy)
+- **Modular Script:** 372 lines with template fetching (current)
+- **Coverage Verification:** All unified functionality preserved in modular approach
+
+### **AI Safety Features Preserved**
+- ✅ **Envelope System:** JSON envelope for change tracking
+- ✅ **Pre-commit Hooks:** Prevent unsafe code commits
+- ✅ **Language Linting:** Multi-language code quality enforcement
+- ✅ **Scope Checking:** Prevent AI from exceeding declared scope
+- ✅ **Workflow Validation:** CI/CD integration for continuous safety
+
+---
+
+## 📋 **Key Differences from Parent Directory**
+
+| Aspect | Bootstrap-Dev (Factory) | Parent Directory (Applied) |
+|--------|------------------------|----------------------------|
+| **Purpose** | Build the bootstrap system | Use applied guardrails |
+| **AI Config** | Development configuration | Applied guardrail configuration |
+| **Documentation** | Architecture & development | User guides & applied templates |
+| **Tests** | System development tests | User project validation |
+| **Scripts** | Bootstrap source code | Applied automation scripts |
+
+---
+
+## 🎯 **Important Notes**
+
+### **Namespace Clarity**
+- **THIS workspace:** Developing the bootstrap system
+- **Parent workspace:** Using the bootstrap system
+- **No contamination:** Clear separation of concerns
+
+### **Safety Verification**
+- All AI guardrail functionality from unified script preserved
+- Template system ensures consistent guardrail application
+- Development testing validates safety feature completeness
+
+### **Development Guidelines**
+- Always test changes in clean environments
+- Never modify parent directory applied guardrails from here
+- Use version control for all development changes
+- Follow release process for distribution
+
+---
+
+**🏭 Development Lead:** Architecture Team
+**📦 Product Owner:** Project Lead
+**🎯 Consumer:** Parent directory project
+
+---
+
+*Clean namespace separation enables clear development while preserving applied guardrails integrity.*
