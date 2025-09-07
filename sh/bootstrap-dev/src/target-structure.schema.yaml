@@ -18,7 +18,7 @@ expected_structure:
       "envelope.json":
         required: false
         description: "Copilot planning envelope (auto-generated)"
-        schema_ref: "ai/schemas/copilot_envelope.schema.json"
+        schema_ref: ".ai/schemas/copilot_envelope.schema.json"
       "guardrails/":
         required: false
         description: "Extended guardrails configuration"
@@ -107,7 +107,7 @@ validation:
   # Core requirements that must be satisfied
   core_requirements:
     - "Must have .ai/ directory with guardrails.yaml"
-    - "Must have ai/schemas/ directory with copilot_envelope.schema.json"
+    - "Must have .ai/schemas/ directory with copilot_envelope.schema.json"
     - "No files allowed in repository root unless in root-allowlist.txt"
 
   # Structure constraints
