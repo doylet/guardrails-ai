@@ -15,7 +15,7 @@ components:
   schemas:
     description: "JSON schemas for validation"
     file_patterns:
-      - "ai/schemas/*.json"
+      - ".ai/schemas/*.json"
 
   scripts:
     description: "All automation scripts"
