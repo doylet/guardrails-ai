@@ -1,7 +1,7 @@
 # 0006-Sprint-Plan-Schema-Path-Migration-Completion
 
 **Date:** 2025-01-07
-**Status:** 🚀 PLANNED
+**Status:** ✅ COMPLETED
 **Priority:** High
 **Related:** [manifest-paths-consolidation.patch], [ADR-002-project-structure-reorganization.md]
 **Branch:** feature/complete-schema-path-migration
@@ -12,7 +12,7 @@
 
 This sprint completes the path migration from `ai/` to `.ai/` directories, specifically focusing on schema file locations and bootstrap script updates. The scripts migration (`ai/scripts` → `.ai/scripts`) has been completed, but schema references and bootstrap installation logic still point to the old paths.
 
-**Current Status: 60% Complete** - Scripts migration done, schemas migration pending
+**Current Status: 100% Complete** - All path migration completed, legacy ai/ directory safely removed
 
 ---
 
@@ -26,47 +26,47 @@ Complete the migration from `ai/` to `.ai/` directory structure to fully consoli
 
 ## Sprint Tasks
 
-### Phase 1: Schema Path Migration (Day 1)
+### Phase 1: Schema Path Migration (Day 1) ✅ COMPLETED
 
 #### Update Installation Manifest
-- [ ] **`src/installation-manifest.yaml`** - Line 18:
+- [x] **`src/installation-manifest.yaml`** - Line 18:
   - Change `"ai/schemas/*.json"` → `".ai/schemas/*.json"`
 
 #### Update Target Structure Schema  
-- [ ] **`src/target-structure.schema.yaml`** - Lines 21, 110:
+- [x] **`src/target-structure.schema.yaml`** - Lines 21, 110:
   - Change `"ai/schemas/copilot_envelope.schema.json"` → `".ai/schemas/copilot_envelope.schema.json"`
   - Update validation rules to reference `.ai/schemas/`
 
-### Phase 2: Bootstrap Script Updates (Day 2)
+### Phase 2: Bootstrap Script Updates (Day 2) ✅ COMPLETED
 
 #### Update Bootstrap Installation Logic
-- [ ] **`src/ai_guardrails_bootstrap_modular.sh`** - Multiple lines:
+- [x] **`src/ai_guardrails_bootstrap_modular.sh`** - Multiple lines:
   - Line 170: `"ai/schemas/copilot_envelope.schema.json"` → `".ai/schemas/copilot_envelope.schema.json"`
   - Line 281: `"ai/schemas/copilot_envelope.schema.json"` → `".ai/schemas/copilot_envelope.schema.json"`
   - Line 328: Update template write paths from `ai/schemas/` → `.ai/schemas/`
   - Line 331-334: Update script installation paths from `ai/scripts/` → `.ai/scripts/`
   - Line 337: `chmod +x ai/scripts/*.py ai/scripts/*.sh` → `chmod +x .ai/scripts/*.py .ai/scripts/.sh`
 
-### Phase 3: Template Structure Migration (Day 2)
+### Phase 3: Template Structure Migration (Day 2) ✅ COMPLETED
 
 #### Move Schema Files in Templates
-- [ ] **Create `.ai/schemas/` directory** in `src/ai-guardrails-templates/`
-- [ ] **Move schema files** from `ai/schemas/` → `.ai/schemas/`
-- [ ] **Create `.ai/scripts/` directory** in templates (if not exists)
-- [ ] **Move script files** from `ai/scripts/` → `.ai/scripts/`
+- [x] **Create `.ai/schemas/` directory** in `src/ai-guardrails-templates/`
+- [x] **Move schema files** from `ai/schemas/` → `.ai/schemas/`
+- [x] **Create `.ai/scripts/` directory** in templates (if not exists)
+- [x] **Move script files** from `ai/scripts/` → `.ai/scripts/`
 
-### Phase 4: Validation & Cleanup (Day 3)
+### Phase 4: Validation & Cleanup (Day 3) ✅ COMPLETED
 
 #### Testing & Verification
-- [ ] **Test bootstrap installation** with new paths
-- [ ] **Verify all manifests** reference correct paths
-- [ ] **Run existing tests** to ensure no regressions
-- [ ] **Check GitHub workflows** use correct script paths
+- [x] **Test bootstrap installation** with new paths
+- [x] **Verify all manifests** reference correct paths
+- [x] **Run existing tests** to ensure no regressions
+- [x] **Check GitHub workflows** use correct script paths
 
 #### Final Cleanup
-- [ ] **Remove legacy `ai/` directory** from templates
-- [ ] **Update any remaining documentation** referencing old paths
-- [ ] **Verify grep search** shows no remaining `ai/scripts` or `ai/schemas` references
+- [x] **Remove legacy `ai/` directory** from templates
+- [x] **Update any remaining documentation** referencing old paths
+- [x] **Verify grep search** shows no remaining `ai/scripts` or `ai/schemas` references
 
 ---
 
@@ -115,13 +115,13 @@ Complete the migration from `ai/` to `.ai/` directory structure to fully consoli
 
 ## Definition of Done
 
-- [ ] All manifest files reference `.ai/` paths consistently
-- [ ] Bootstrap installation creates files in `.ai/` directories
-- [ ] Template structure follows `.ai/` convention
-- [ ] All tests pass successfully
-- [ ] `grep -r "ai/schemas\|ai/scripts"` returns no matches (except patch files)
-- [ ] Legacy `ai/` directory removed from templates
-- [ ] Documentation updated if necessary
+- [x] All manifest files reference `.ai/` paths consistently
+- [x] Bootstrap installation creates files in `.ai/` directories
+- [x] Template structure follows `.ai/` convention
+- [x] All tests pass successfully
+- [x] `grep -r "ai/schemas\|ai/scripts"` returns no matches (except patch files)
+- [x] Legacy `ai/` directory removed from templates
+- [x] Documentation updated if necessary
 
 ---
 
