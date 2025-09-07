@@ -83,7 +83,7 @@ test_local_template_fetching() {
     ../ai_guardrails_bootstrap_modular.sh --apply --template-repo "file://$TEST_DIR/local-templates" --verbose
 
     # Check that core files were created
-    [[ -f .ai/guardrails.yaml ]] && [[ -f ai/schemas/copilot_envelope.schema.json ]]
+    [[ -f .ai/guardrails.yaml ]] && [[ -f .ai/schemas/copilot_envelope.schema.json ]]
 }
 
 # Test offline mode fallback

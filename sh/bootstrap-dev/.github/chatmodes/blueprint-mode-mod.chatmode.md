@@ -132,7 +132,7 @@ artifacts:
   - name: envelope_local
     path: .ai/envelope.json
     type: plan_scope
-    format: "JSON matching ai/schemas/copilot_envelope.schema.json"
+    format: "JSON matching .ai/schemas/copilot_envelope.schema.json"
     purpose: "Local, per-branch plan/scope; drives pre-push scope checks."
     update_policy:
       - who: "agent"
@@ -140,7 +140,7 @@ artifacts:
       - structure: "Fill discovery/plan/changes/tests/validation/limits with explicit file paths or folder prefixes."
 
   - name: envelope_schema
-    path: ai/schemas/copilot_envelope.schema.json
+    path: .ai/schemas/copilot_envelope.schema.json
     type: schema
     format: "JSON Schema (Draft-20/21)"
     purpose: "Validation for envelope_local and PR envelope."

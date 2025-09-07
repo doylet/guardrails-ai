@@ -84,9 +84,9 @@ test_output_compatibility() {
     local key_files=(
         ".ai/guardrails.yaml"
         ".ai/envelope.json"
-        "ai/schemas/copilot_envelope.schema.json"
-        "ai/scripts/check_envelope.py"
-        "ai/scripts/lang_lint.sh"
+        ".ai/schemas/copilot_envelope.schema.json"
+        ".ai/scripts/check_envelope.py"
+        ".ai/scripts/lang_lint.sh"
         ".pre-commit-config.yaml"
         ".github/workflows/ai_guardrails_on_commit.yaml"
     )
@@ -116,7 +116,7 @@ test_migration_scenario() {
     ../ai_guardrails_bootstrap_modular.sh --apply --template-repo="file://$TEST_DIR/ai-guardrails-templates" --force > /dev/null 2>&1
 
     # Verify files still exist and are valid
-    [[ -f .ai/guardrails.yaml ]] && [[ -f ai/schemas/copilot_envelope.schema.json ]]
+    [[ -f .ai/guardrails.yaml ]] && [[ -f .ai/schemas/copilot_envelope.schema.json ]]
 
     cd ..
 }
