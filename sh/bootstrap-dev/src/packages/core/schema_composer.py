@@ -86,9 +86,10 @@ class PluginConflict:
 class PathMerger:
     """Handles merging of specific path types with sophisticated conflict resolution."""
     
-    def __init__(self, context: CompositionContext):
+    def __init__(self, context: CompositionContext, interactive_resolver=None):
         self.context = context
         self.logger = get_logger(__name__)
+        self.interactive_resolver = interactive_resolver
     
     def merge_path_definition(self, 
                              target: Dict[str, Any],
@@ -181,6 +182,31 @@ class PathMerger:
                 # Merge compatible properties
                 return self._union_merge_file(target, path, definition, plugin_name)
                 
+            elif strategy == MergeStrategy.INTERACTIVE:
+                # Interactive conflict resolution
+                if self.interactive_resolver:
+                    conflict = PluginConflict(
+                        type='file_overlap',
+                        plugins=[existing.get('_source_plugin', 'unknown'), plugin_name],
+                        path=path,
+                        message=f"File '{path}' defined by multiple plugins",
+                        severity='warning',
+                        resolution_suggestion="User guidance required"
+                    )
+                    self.context.conflicts_encountered.append(conflict)
+                    
+                    resolution = self.interactive_resolver.resolve_conflict(
+                        conflict, existing, definition
+                    )
+                    
+                    return self._apply_conflict_resolution(
+                        target, path, existing, definition, plugin_name, resolution
+                    )
+                else:
+                    # Fallback to UNION if no interactive resolver
+                    self.logger.warning(f"No interactive resolver available for {path}, using UNION")
+                    return self._union_merge_file(target, path, definition, plugin_name)
+                
         else:
             # No conflict - simple addition
             target[path] = deepcopy(definition)
@@ -231,6 +257,39 @@ class PathMerger:
                 elif strategy == MergeStrategy.UNION:
                     if not self._union_merge_file_properties(target_files, file_name, file_def, plugin_name):
                         return False
+                elif strategy == MergeStrategy.INTERACTIVE:
+                    # Interactive resolution for file within directory
+                    if self.interactive_resolver:
+                        conflict = PluginConflict(
+                            type='file_overlap',
+                            plugins=[target_files[file_name].get('_source_plugin', 'unknown'), plugin_name],
+                            path=file_path,
+                            message=f"File '{file_path}' in directory defined by multiple plugins",
+                            severity='warning',
+                            resolution_suggestion="User guidance required"
+                        )
+                        self.context.conflicts_encountered.append(conflict)
+                        
+                        resolution = self.interactive_resolver.resolve_conflict(
+                            conflict, target_files[file_name], file_def
+                        )
+                        
+                        if resolution.strategy == "skip":
+                            # Remove file from directory
+                            if file_name in target_files:
+                                del target_files[file_name]
+                        elif resolution.strategy == "override":
+                            if resolution.chosen_plugin == plugin_name:
+                                target_files[file_name] = deepcopy(file_def)
+                                target_files[file_name]['_source_plugin'] = plugin_name
+                        else:
+                            # Union or custom - use standard merge
+                            if not self._union_merge_file_properties(target_files, file_name, file_def, plugin_name):
+                                return False
+                    else:
+                        # Fallback to union
+                        if not self._union_merge_file_properties(target_files, file_name, file_def, plugin_name):
+                            return False
             else:
                 target_files[file_name] = deepcopy(file_def)
                 target_files[file_name]['_source_plugin'] = plugin_name
@@ -391,6 +450,52 @@ class PathMerger:
         else:
             return new  # Fallback to new value
     
+    def _apply_conflict_resolution(self, target: Dict[str, Any], path: str,
+                                  existing: Dict[str, Any], new_definition: Dict[str, Any], 
+                                  plugin_name: str, resolution) -> bool:
+        """Apply interactive conflict resolution to target schema."""
+        from .interactive_conflict_resolver import ConflictResolution
+        
+        if resolution.strategy == "skip":
+            # Remove path from target entirely
+            if path in target:
+                del target[path]
+            return True
+            
+        elif resolution.strategy == "override":
+            if resolution.chosen_plugin == plugin_name:
+                # Use new plugin's definition
+                target[path] = deepcopy(new_definition)
+                target[path]['_source_plugin'] = plugin_name
+                target[path]['_overrode_plugin'] = existing.get('_source_plugin', 'unknown')
+            else:
+                # Keep existing (first plugin wins)
+                pass  # No change needed
+            return True
+            
+        elif resolution.strategy == "union":
+            # Use standard union merge
+            return self._union_merge_file(target, path, new_definition, plugin_name)
+            
+        elif resolution.strategy == "custom":
+            # Use custom user-provided value
+            custom_definition = {
+                'type': 'file',
+                '_source_plugin': f"custom_resolution_{plugin_name}",
+                '_resolved_from': [existing.get('_source_plugin', 'unknown'), plugin_name]
+            }
+            if isinstance(resolution.custom_value, dict):
+                custom_definition.update(resolution.custom_value)
+            else:
+                custom_definition['content'] = resolution.custom_value
+            target[path] = custom_definition
+            return True
+            
+        else:
+            # Fallback to union
+            self.logger.warning(f"Unknown resolution strategy {resolution.strategy}, using union")
+            return self._union_merge_file(target, path, new_definition, plugin_name)
+    
     def _deep_merge_dicts(self, dict1: Dict[str, Any], dict2: Dict[str, Any]) -> Dict[str, Any]:
         """Deep merge two dictionaries."""
         if not isinstance(dict1, dict):
@@ -425,7 +530,8 @@ class SchemaComposer:
                  base_schema_path: Path,
                  plugin_directory: Path,
                  cache_enabled: bool = True,
-                 default_merge_strategy: MergeStrategy = MergeStrategy.UNION):
+                 default_merge_strategy: MergeStrategy = MergeStrategy.UNION,
+                 interactive_resolver=None):
         """Initialize schema composer.
         
         Args:
@@ -433,11 +539,13 @@ class SchemaComposer:
             plugin_directory: Directory containing plugin subdirectories
             cache_enabled: Whether to cache composition results
             default_merge_strategy: Default strategy for conflict resolution
+            interactive_resolver: InteractiveConflictResolver for INTERACTIVE strategy
         """
         self.base_schema_path = base_schema_path
         self.plugin_directory = plugin_directory
         self.cache_enabled = cache_enabled
         self.default_merge_strategy = default_merge_strategy
+        self.interactive_resolver = interactive_resolver
         self.logger = get_logger(__name__)
         
         # Composition cache
@@ -705,7 +813,7 @@ class SchemaComposer:
             Merged schema with all plugin structures integrated
         """
         composed = deepcopy(base_schema)
-        path_merger = PathMerger(context)
+        path_merger = PathMerger(context, self.interactive_resolver)
         
         # Ensure expected_structure exists
         expected_structure = composed.setdefault('expected_structure', {})
@@ -755,7 +863,7 @@ class SchemaComposer:
             merge_history=[]
         )
         
-        path_merger = PathMerger(context)
+        path_merger = PathMerger(context, self.interactive_resolver)
         expected_structure = composed_schema.setdefault('expected_structure', {})
         
         success = path_merger.merge_path_definition(expected_structure, path, definition, plugin_name)
