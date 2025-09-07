@@ -37,12 +37,15 @@ setup_test_env() {
     export TEST_DIR
     echo "Test environment: $TEST_DIR"
 
+    # Get the script directory
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
     # Copy modular script to test dir
-    cp ai_guardrails_bootstrap_modular.sh "$TEST_DIR/"
+    cp "$SCRIPT_DIR/src/ai_guardrails_bootstrap_modular.sh" "$TEST_DIR/"
 
     # Create a local template repo for testing
     mkdir -p "$TEST_DIR/local-templates/templates"
-    cp -r ai-guardrails-templates/* "$TEST_DIR/local-templates/"
+    cp -r "$SCRIPT_DIR/src/ai-guardrails-templates"/* "$TEST_DIR/local-templates/"
 
     cd "$TEST_DIR"
 }
@@ -81,7 +84,9 @@ test_local_template_fetching() {
 
     # Check that core files were created
     [[ -f .ai/guardrails.yaml ]] && [[ -f ai/schemas/copilot_envelope.schema.json ]]
-}# Test offline mode fallback
+}
+
+# Test offline mode fallback
 test_offline_fallback() {
     mkdir -p test_project_offline
     cd test_project_offline

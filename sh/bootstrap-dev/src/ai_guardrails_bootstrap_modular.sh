@@ -266,8 +266,10 @@ doctor() {
   fi
 
   # Version info
-  local installed=$(get_installed_version)
-  local latest=$(get_latest_version)
+  local installed
+  local latest
+  installed=$(get_installed_version)
+  latest=$(get_latest_version)
   echo "Installed version: $installed"
   echo "Latest version: $latest"
 
@@ -361,8 +363,10 @@ apply_templates() {
 update_installation() {
   echo "== Update installation =="
 
-  local current=$(get_installed_version)
-  local latest=$(get_latest_version)
+  local current
+  local latest
+  current=$(get_installed_version)
+  latest=$(get_latest_version)
 
   echo "Current: $current"
   echo "Latest: $latest"

@@ -37,8 +37,11 @@ setup_test_env() {
     export TEST_DIR
     echo "Network test environment: $TEST_DIR"
 
+    # Get the script directory
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
     # Copy modular script to test dir
-    cp ai_guardrails_bootstrap_modular.sh "$TEST_DIR/"
+    cp "$SCRIPT_DIR/src/ai_guardrails_bootstrap_modular.sh" "$TEST_DIR/"
 
     cd "$TEST_DIR"
 }

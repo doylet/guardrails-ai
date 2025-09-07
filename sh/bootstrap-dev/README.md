@@ -1,31 +1,25 @@
-# AI Guardrails Bootstrap - Development Workspace
+# AI Guardrails Bootstrap - Source & Development
 
-> **Infrastructure-as-Code bootstrap system for AI guardrails**
+> **Source repository for AI guardrails bootstrap system development**
 
-**🏭 Factory Status:** This is the development workspace - NOT the applied product
-**📦 Product Location:** Parent directory (`../`) contains applied guardrails
-**🎯 Purpose:** Build, test, and distribute the infrastructure-as-code bootstrap system
+**🏭 Source Status:** This is the SOURCE workspace where the bootstrap system is developed
+**📦 Binary Location:** `../bootstrap-bin/` contains the deployed installation
+**🎯 Purpose:** Source control, development, testing, and building of the bootstrap system
 
 ---
 
 ## 🗂️ **Development Structure**
 
 ```
-bootstrap-dev/                         # 🏭 CLEAN DEVELOPMENT WORKSPACE
+bootstrap-dev/                         # 🏭 SOURCE & DEVELOPMENT WORKSPACE
 ├── src/                               # 📦 Source code and templates
 │   ├── ai_guardrails_bootstrap.sh             # Production wrapper (Infrastructure-as-Code)
-│   └── ai-guardrails-templates/               # Template repository
-├── infrastructure_bootstrap.py               # 🚀 Infrastructure-as-Code engine
-├── installation-manifest.yaml               # 📋 Declarative installation definition
-├── development/                              # 🔧 Development-only tools
-│   ├── bootstrap-config.yaml                # Build configuration
-│   ├── bootstrap_manager.py                 # Advanced build tool
-│   ├── plugin_system.py                     # Plugin framework
-│   └── deprecated/                          # Legacy scripts (archived)
+│   └── ai-guardrails-templates/               # Template repository (source)
 ├── tests/                             # 🧪 Development test suites
-├── docs/                              # 📚 Development documentation
-├── dist/                              # 📦 Build artifacts and releases
-└── README.md                          # This file
+├── docs/                              # � Development documentation  
+├── DEVELOPMENT.md                     # 🛠️ Developer guide
+├── pyproject.toml                     # � Python project configuration
+└── README.md                          # This file (source workspace)
 ```
 
 ---

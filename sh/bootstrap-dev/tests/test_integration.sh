@@ -38,12 +38,21 @@ setup_test_env() {
     export TEST_DIR
     echo "Integration test environment: $TEST_DIR"
 
-    # Copy both scripts to test dir
-    cp ai_guardrails_bootstrap_unified.sh "$TEST_DIR/"
-    cp ai_guardrails_bootstrap_modular.sh "$TEST_DIR/"
+    # Get the script directory
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+    # Copy both scripts to test dir (if they exist)
+    if [[ -f "$SCRIPT_DIR/src/ai_guardrails_bootstrap_unified.sh" ]]; then
+        cp "$SCRIPT_DIR/src/ai_guardrails_bootstrap_unified.sh" "$TEST_DIR/"
+    fi
+    if [[ -f "$SCRIPT_DIR/src/ai_guardrails_bootstrap_modular.sh" ]]; then
+        cp "$SCRIPT_DIR/src/ai_guardrails_bootstrap_modular.sh" "$TEST_DIR/"
+    fi
 
     # Copy template repo for local testing
-    cp -r ai-guardrails-templates "$TEST_DIR/"
+    if [[ -d "$SCRIPT_DIR/src/ai-guardrails-templates" ]]; then
+        cp -r "$SCRIPT_DIR/src/ai-guardrails-templates" "$TEST_DIR/"
+    fi
 
     cd "$TEST_DIR"
 }
