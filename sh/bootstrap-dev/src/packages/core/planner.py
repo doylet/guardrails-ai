@@ -23,6 +23,7 @@ from ..domain.model import (
 )
 from ..adapters.hashing import sha256_file, sha256_content
 from ..adapters.logging import get_logger
+from ..utils.path_utils import apply_target_prefix_stripping, apply_destination_mappings
 from .resolver import ResolvedSpec
 
 logger = get_logger(__name__)
@@ -218,14 +219,14 @@ class Planner:
             # File is outside base directory, use filename only
             relative_path = src_path.name
 
-        # Apply destination mapping if configured
+        # Apply target_prefix stripping using shared utility
+        component_name = component_config["name"]
+        manifest = {"components": {component_name: component_config}}
+        stripped_path = apply_target_prefix_stripping(component_name, str(relative_path), manifest)
+        
+        # Apply destination mappings using shared utility
         dst_mappings = component_config.get("destination_mappings", {})
-        mapped_path = relative_path
-
-        for src_pattern, dst_pattern in dst_mappings.items():
-            if str(relative_path).startswith(src_pattern):
-                mapped_path = Path(str(relative_path).replace(src_pattern, dst_pattern, 1))
-                break
+        mapped_path = apply_destination_mappings(Path(stripped_path), dst_mappings)
 
         return self.target_dir / mapped_path
 

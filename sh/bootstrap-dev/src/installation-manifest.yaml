@@ -43,14 +43,17 @@ components:
     description: "Pre-commit configuration"
     file_patterns:
       - ".pre-commit-config.yaml.example"
-      - ".pre-commit-config.yaml"
+    destination_mappings:
+      ".pre-commit-config.yaml.example": ".pre-commit-config.yaml"
 
   docs:
     description: "All documentation templates"
     file_patterns:
-      - "docs/**/*"
-      - "ai/*.md"  # capabilities.md etc
-    target_prefix: ""  # Remove 'templates/' prefix when installing
+      - "templates/docs/**/*"
+      - "templates/.ai/*.md"  # capabilities.md etc
+    target_prefix: "templates/"  # Remove 'templates/' prefix when installing
+    destination_mappings:
+      ".template": ""  # Remove .template extension from all template files
 
 # Installation profiles - reference components, not files
 profiles:

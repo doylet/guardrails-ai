@@ -9,6 +9,7 @@ from typing import Dict, List
 from glob import glob
 
 from ..utils import Colors
+from ..utils.path_utils import apply_target_prefix_stripping
 from .plugin_system import PluginSystem
 from .config_manager import ConfigManager
 from ..presentation import ComponentPresenter
@@ -160,7 +161,7 @@ class ComponentManager:
         """Install a single file for a component"""
         try:
             # Apply target prefix stripping if configured
-            target_rel_file = self._apply_target_prefix_stripping(component, rel_file, manifest)
+            target_rel_file = apply_target_prefix_stripping(component, rel_file, manifest)
 
             # Determine source and target paths
             is_plugin_component = self.plugin_system.is_plugin_component(component)
@@ -206,19 +207,6 @@ class ComponentManager:
         except Exception as e:
             print(f"  {Colors.error('[ERROR]')} Failed to install {rel_file}: {e}")
             return False
-
-    def _apply_target_prefix_stripping(self, component: str, rel_file: str, manifest: Dict) -> str:
-        """Apply target_prefix stripping if configured for component"""
-        if component not in manifest['components']:
-            return rel_file
-
-        component_config = manifest['components'][component]
-        target_prefix = component_config.get('target_prefix', '')
-
-        if target_prefix and rel_file.startswith(target_prefix):
-            return rel_file[len(target_prefix):]
-
-        return rel_file
 
     def _should_merge_file(self, src_path: Path, target_path: Path) -> bool:
         """Check if a file should be merged instead of copied"""

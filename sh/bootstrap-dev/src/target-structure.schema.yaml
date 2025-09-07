@@ -21,6 +21,10 @@ expected_structure:
       "scripts/":
         required: false
         description: "Automation scripts"
+        subdirs:
+          "policy/":
+            required: false
+            description: "Policy scripts"
         file_patterns:
           - "*.py"
           - "*.sh"
@@ -107,9 +111,6 @@ expected_structure:
       "commit-msg.d/":
         required: false
         description: "Commit message hook scripts"
-      "post-commit.d/":
-        required: false
-        description: "Post-commit hook scripts"
     files:
       "_run_hook":
         required: false
@@ -120,9 +121,6 @@ expected_structure:
       "commit-msg":
         required: false
         description: "Commit message hook (symlink to _run_hook)"
-      "post-commit":
-        required: false
-        description: "Post-commit hook (symlink to _run_hook)"
 
 # Validation rules
 validation:
@@ -166,7 +164,10 @@ profiles:
       - ".ai/guardrails.yaml"
       - ".ai/schemas/copilot_envelope.schema.json"
       - ".ai/scripts/"
+      - ".ai/scripts/policy/"
       - ".githooks/"
+      - ".github/chatmodes/"
+      - ".github/instructions/"
       - "docs/"
       - ".pre-commit-config.yaml"
 
@@ -175,7 +176,10 @@ profiles:
       - ".ai/guardrails.yaml"
       - ".ai/schemas/copilot_envelope.schema.json"
       - ".ai/scripts/"
+      - ".ai/scripts/policy/"
       - ".githooks/"
+      - ".github/chatmodes/"
+      - ".github/instructions/"
       - ".github/workflows/"
       - "docs/"
       - ".pre-commit-config.yaml"
