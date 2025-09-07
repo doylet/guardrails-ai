@@ -58,7 +58,7 @@ def extract_env(text: str):
 def validate_schema(env):
 
     # Load the schema
-    with open("ai/schemas/copilot_envelope.schema.json", "r", encoding="utf-8") as f:
+    with open(".ai/schemas/copilot_envelope.schema.json", "r", encoding="utf-8") as f:
         schema = json.load(f)
 
     # Validate the envelope

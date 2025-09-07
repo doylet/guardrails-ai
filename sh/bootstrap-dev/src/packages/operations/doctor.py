@@ -192,13 +192,13 @@ class Doctor:
                 else:
                     print(f"  {Colors.ok('[OK]')} Core requirement satisfied: .ai/guardrails.yaml")
 
-            elif "Must have ai/schemas/ directory with copilot_envelope.schema.json" in requirement:
-                schema_path = self.target_dir / "ai" / "schemas" / "copilot_envelope.schema.json"
+            elif "Must have .ai/schemas/ directory with copilot_envelope.schema.json" in requirement:
+                schema_path = self.target_dir / ".ai" / "schemas" / "copilot_envelope.schema.json"
                 if not schema_path.exists():
-                    print(f"  {Colors.error('[ERROR]')} Missing core requirement: ai/schemas/copilot_envelope.schema.json")
+                    print(f"  {Colors.error('[ERROR]')} Missing core requirement: .ai/schemas/copilot_envelope.schema.json")
                     issues += 1
                 else:
-                    print(f"  {Colors.ok('[OK]')} Core requirement satisfied: ai/schemas/copilot_envelope.schema.json")
+                    print(f"  {Colors.ok('[OK]')} Core requirement satisfied: .ai/schemas/copilot_envelope.schema.json")
 
         return issues
 

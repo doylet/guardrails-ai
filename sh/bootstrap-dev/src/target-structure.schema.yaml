@@ -137,21 +137,21 @@ profiles:
   minimal:
     required_structure:
       - ".ai/guardrails.yaml"
-      - "ai/schemas/copilot_envelope.schema.json"
+      - ".ai/schemas/copilot_envelope.schema.json"
 
   standard:
     required_structure:
       - ".ai/guardrails.yaml"
-      - "ai/schemas/copilot_envelope.schema.json"
-      - "ai/scripts/"
+      - ".ai/schemas/copilot_envelope.schema.json"
+      - ".ai/scripts/"
       - "docs/"
       - ".pre-commit-config.yaml"
 
   full:
     required_structure:
       - ".ai/guardrails.yaml"
-      - "ai/schemas/copilot_envelope.schema.json"
-      - "ai/scripts/"
+      - ".ai/schemas/copilot_envelope.schema.json"
+      - ".ai/scripts/"
       - ".github/workflows/"
       - "docs/"
       - ".pre-commit-config.yaml"

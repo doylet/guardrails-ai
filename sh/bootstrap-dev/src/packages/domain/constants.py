@@ -49,7 +49,7 @@ WORKFLOWS = {
 
 # Schema and validation files
 SCHEMA_FILES = {
-    "envelope": "ai/schemas/copilot_envelope.schema.json",
+    "envelope": ".ai/schemas/copilot_envelope.schema.json",
     "target": "target-structure.schema.yaml",
     "manifest": "schemas/installation-manifest.schema.json",
     "plugin": "schemas/plugin-manifest.schema.json",
@@ -57,10 +57,10 @@ SCHEMA_FILES = {
 
 # Script names for policy enforcement
 POLICY_SCRIPTS = {
-    "check_envelope": "ai/scripts/check_envelope.py",
-    "check_envelope_local": "ai/scripts/check_envelope_local.py",
-    "lang_lint": "ai/scripts/lang_lint.sh",
-    "lang_test": "ai/scripts/lang_test.sh",
+    "check_envelope": ".ai/scripts/check_envelope.py",
+    "check_envelope_local": ".ai/scripts/check_envelope_local.py",
+    "lang_lint": ".ai/scripts/lang_lint.sh",
+    "lang_test": ".ai/scripts/lang_test.sh",
     "validate_docs": "scripts/validate_docs.py",
 }
 
