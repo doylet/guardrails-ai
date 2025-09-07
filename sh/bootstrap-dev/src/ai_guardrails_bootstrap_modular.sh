@@ -167,7 +167,7 @@ EOF
 }
 EOF
       ;;
-    "ai/schemas/copilot_envelope.schema.json")
+    ".ai/schemas/copilot_envelope.schema.json")
       cat > "$target_path" <<'EOF'
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -278,7 +278,7 @@ doctor() {
   fi
 
   # Check key files
-  local key_files=(".ai/guardrails.yaml" ".ai/envelope.json" "ai/schemas/copilot_envelope.schema.json")
+  local key_files=(".ai/guardrails.yaml" ".ai/envelope.json" ".ai/schemas/copilot_envelope.schema.json")
   local missing=0
   for f in "${key_files[@]}"; do
     if [[ ! -f "$f" ]]; then
@@ -325,16 +325,16 @@ apply_templates() {
   write_template ".ai/envelope.json" ".ai/envelope.json"
 
   # Schemas
-  write_template "ai/schemas/copilot_envelope.schema.json" "ai/schemas/copilot_envelope.schema.json"
+  write_template ".ai/schemas/copilot_envelope.schema.json" ".ai/schemas/copilot_envelope.schema.json"
 
   # Scripts (optional in offline mode)
-  write_template "ai/scripts/check_envelope.py" "ai/scripts/check_envelope.py" "true"
-  write_template "ai/scripts/check_envelope_local.py" "ai/scripts/check_envelope_local.py" "true"
-  write_template "ai/scripts/lang_lint.sh" "ai/scripts/lang_lint.sh" "true"
-  write_template "ai/scripts/lang_test.sh" "ai/scripts/lang_test.sh" "true"
+  write_template ".ai/scripts/check_envelope.py" ".ai/scripts/check_envelope.py" "true"
+  write_template ".ai/scripts/check_envelope_local.py" ".ai/scripts/check_envelope_local.py" "true"
+  write_template ".ai/scripts/lang_lint.sh" ".ai/scripts/lang_lint.sh" "true"
+  write_template ".ai/scripts/lang_test.sh" ".ai/scripts/lang_test.sh" "true"
 
   # Make scripts executable
-  chmod +x ai/scripts/*.py ai/scripts/*.sh 2>/dev/null || true
+  chmod +x .ai/scripts/*.py .ai/scripts/*.sh 2>/dev/null || true
 
   # GitHub files
   write_template ".github/workflows/ai_guardrails_on_commit.yaml" ".github/workflows/ai_guardrails_on_commit.yaml"
