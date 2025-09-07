@@ -24,7 +24,7 @@ components:
     file_patterns:
       - ".githooks/**/*"
       - ".ai/guardrails/**/*"
-      - "ai/scripts/**/*"
+      - ".ai/scripts/**/*"
       - "ai/snippets/**/*"
 
   github-hygiene:

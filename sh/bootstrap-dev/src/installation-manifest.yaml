@@ -20,10 +20,10 @@ components:
   scripts:
     description: "All automation scripts"
     file_patterns:
-      - "ai/scripts/**/*.py"   # Recursive pattern to include subdirectories
-      - "ai/scripts/**/*.sh"   # Recursive pattern to include subdirectories
+      - ".ai/scripts/**/*.py"   # Recursive pattern to include subdirectories
+      - ".ai/scripts/**/*.sh"   # Recursive pattern to include subdirectories
     post_install:
-      - "chmod +x ai/scripts/**/*.py ai/scripts/**/*.sh"
+      - "chmod +x .ai/scripts/**/*.py .ai/scripts/**/*.sh"
 
   github:
     description: "GitHub integration files"

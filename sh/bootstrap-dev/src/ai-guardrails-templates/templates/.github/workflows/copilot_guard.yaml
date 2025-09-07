@@ -27,7 +27,7 @@ jobs:
           pip install jsonschema requests
       - name: Validate JSON envelope & scope
         run: |
-          python ai/scripts/check_envelope.py
+          python .ai/scripts/check_envelope.py
 
   quality:
     name: Lint • Types • Tests

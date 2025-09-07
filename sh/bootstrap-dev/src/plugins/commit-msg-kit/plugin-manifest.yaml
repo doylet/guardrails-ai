@@ -24,7 +24,7 @@ components:
     file_patterns:
       - ".githooks/**/*"
       - ".gitmessage.txt"
-      - "ai/scripts/**/*"
+      - ".ai/scripts/**/*"
 
   vscode-commit:
     description: "VS Code configuration for commit messages"

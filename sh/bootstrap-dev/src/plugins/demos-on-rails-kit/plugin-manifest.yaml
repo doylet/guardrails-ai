@@ -30,7 +30,7 @@ components:
   demo-scripts:
     description: "Demo validation scripts"
     file_patterns:
-      - "ai/scripts/**/*.py"
+      - ".ai/scripts/**/*.py"
 
   demo-workflows:
     description: "Demo CI/CD workflows"

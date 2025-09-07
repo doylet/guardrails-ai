@@ -12,4 +12,4 @@ repos:
       - id: demos-on-rails-lint
         name: demos-on-rails-lint
         language: system
-        entry: python ai/scripts/check_demo_on_rails.py
+        entry: python .ai/scripts/check_demo_on_rails.py

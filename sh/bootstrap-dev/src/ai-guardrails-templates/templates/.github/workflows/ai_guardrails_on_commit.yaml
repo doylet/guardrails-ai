@@ -28,7 +28,7 @@ jobs:
           python-version: '3.11'
       - run: python -m pip install --upgrade pip jsonschema requests
       - name: Validate envelope & scope
-        run: python ai/scripts/check_envelope.py
+        run: python .ai/scripts/check_envelope.py
 
   python:
     if: ${{ hashFiles('**/pyproject.toml', '**/requirements.txt') != '' || hashFiles('**/*.py') != '' }}
