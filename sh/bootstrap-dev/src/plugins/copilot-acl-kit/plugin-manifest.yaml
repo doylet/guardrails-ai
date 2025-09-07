@@ -20,22 +20,43 @@ components:
     description: ACL policy configuration
     file_patterns:
     - .ai/guardrails/copilot-acl.yaml
+    required: true
+    install_order: 1
+    validation:
+      command: "python -c 'import yaml; yaml.safe_load(open(\".ai/guardrails/copilot-acl.yaml\"))'"
+      
   acl-scripts:
     description: ACL validation scripts
     file_patterns:
     - .ai/scripts/policy/acl_check.py
+    required: true
+    depends_on: [acl-policy]
+    install_order: 2
+    validation:
+      command: "python .ai/scripts/policy/acl_check.py --test"
+      
   acl-hooks:
     description: Git hooks for ACL enforcement
     file_patterns:
     - .githooks/pre-commit.d/copilot-acl.sh
+    required: false
+    depends_on: [acl-scripts]
+    install_order: 3
+    
   acl-workflows:
     description: GitHub workflows for ACL enforcement
     file_patterns:
     - .github/workflows/copilot-acl.yaml
+    required: false
+    depends_on: [acl-scripts]
+    install_order: 4
+    
   acl-installer:
     description: ACL installation script
     file_patterns:
     - scripts/install-acl.sh
+    required: true
+    install_order: 0
 profiles:
   acl-basic:
     description: Basic ACL enforcement with local hooks and policy
@@ -52,29 +73,66 @@ profiles:
     - acl-workflows
     - acl-installer
 configuration:
-  target_structure_extensions:
-    .ai/guardrails/:
-      files:
-        copilot-acl.yaml:
-          required: false
-          description: Access control list policy configuration
-    .ai/scripts/policy/:
-      files:
-        acl_check.py:
-          required: false
-          description: ACL validation script
-    .githooks/pre-commit.d/:
-      files:
-        copilot-acl.sh:
-          required: false
-          description: Pre-commit ACL validation hook
-    .github/workflows/:
-      files:
-        copilot-acl.yaml:
-          required: false
-          description: GitHub workflow for ACL enforcement
-post_install:
-- bash scripts/install-acl.sh
+  templates:
+    acl_policy: ".ai/guardrails/copilot-acl.yaml.template"
+  defaults:
+    strict_mode: false
+    auto_fix: true
+    check_on_commit: true
+  user_prompts:
+    - name: "strict_mode"
+      prompt: "Enable strict ACL mode? (y/n)"
+      default: "n"
+      type: "boolean"
+    - name: "github_integration"
+      prompt: "Enable GitHub workflows? (y/n)"
+      default: "y"
+      type: "boolean"
+  environment_vars:
+    - name: "COPILOT_ACL_STRICT"
+      value: "${user.strict_mode}"
+    - name: "COPILOT_ACL_AUTO_FIX"
+      value: "${defaults.auto_fix}"
+
+installation:
+  pre_install:
+    - name: "Check Python requirements"
+      command: "python3 -c 'import yaml, os, sys'"
+      on_error: "fail"
+      error_message: "Python3 with yaml module required. Install with: pip install PyYAML"
+      
+    - name: "Check Git repository"
+      command: "git rev-parse --git-dir"
+      on_error: "fail"
+      error_message: "Must be run in a Git repository"
+      
+  install:
+    - name: "Create ACL directories"
+      command: "mkdir -p .ai/guardrails .ai/scripts/policy .githooks/pre-commit.d .github/workflows"
+      
+    - name: "Generate default ACL policy"
+      command: "python scripts/generate_default_acl.py"
+      condition: "not_exists(.ai/guardrails/copilot-acl.yaml)"
+      
+    - name: "Set executable permissions"
+      command: "chmod +x .githooks/pre-commit.d/copilot-acl.sh scripts/install-acl.sh"
+      condition: "profile_includes(acl-hooks)"
+      
+  post_install:
+    - name: "Install ACL system"
+      command: "bash scripts/install-acl.sh"
+      
+    - name: "Setup GitHub integration"
+      command: "echo 'GitHub ACL workflow enabled'"
+      condition: "user.github_integration && profile_includes(acl-workflows)"
+      
+  verify:
+    - name: "Test ACL policy validation"
+      command: "python .ai/scripts/policy/acl_check.py --test"
+      
+    - name: "Verify Git hook installation"
+      command: "test -x .githooks/pre-commit.d/copilot-acl.sh"
+      condition: "profile_includes(acl-hooks)"
 hooks:
   pre_commit:
     category: security

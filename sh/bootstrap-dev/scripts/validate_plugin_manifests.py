@@ -48,9 +48,10 @@ def validate_plugin_against_target_structure(plugin_path, target_schema):
                     if not validate_pattern_against_structure(pattern, target_structure):
                         issues.append(f"Component '{component_name}' has pattern '{pattern}' that doesn't align with target structure")
     
-    # Check for target_structure_extensions
-    if 'configuration' in plugin_manifest and 'target_structure_extensions' in plugin_manifest['configuration']:
+    # Check for target_structure_extensions (deprecated - should not exist)
+    if plugin_manifest.get('configuration') and plugin_manifest['configuration'].get('target_structure_extensions'):
         extensions = plugin_manifest['configuration']['target_structure_extensions']
+        issues.append(f"Plugin contains deprecated 'target_structure_extensions' - these should be moved to plugin-structure.schema.yaml")
         for path, definition in extensions.items():
             if not validate_extension_against_structure(path, definition, target_structure):
                 issues.append(f"Target structure extension '{path}' conflicts with base structure")

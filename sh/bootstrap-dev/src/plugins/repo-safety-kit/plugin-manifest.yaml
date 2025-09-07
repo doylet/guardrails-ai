@@ -46,28 +46,6 @@ profiles:
     - repo-safety-hooks
     - repo-safety-vscode
 configuration:
-  target_structure_extensions:
-    .ai/scripts/:
-      files:
-        make-local-mirror.sh:
-          required: false
-          description: Create/update local bare mirror repository
-        backup-bundle.sh:
-          required: false
-          description: Create rotating git bundles for backup
-        install-repo-safety.sh:
-          required: false
-          description: Repository safety installation script
-    .githooks/:
-      files:
-        post-commit:
-          required: false
-          description: Automatic backup after each commit
-    .vscode/:
-      files:
-        settings.json:
-          required: false
-          description: VS Code settings for repository safety
 post_install:
 - bash .ai/scripts/install-repo-safety.sh
 hooks:
