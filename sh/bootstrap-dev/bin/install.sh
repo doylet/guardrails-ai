@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALL_DIR="${AI_GUARDRAILS_INSTALL_DIR:-$HOME/.local/bin}"
 SYMLINK_NAME="ai-guardrails"
 
@@ -19,8 +19,8 @@ if [[ -L "$INSTALL_DIR/$SYMLINK_NAME" || -f "$INSTALL_DIR/$SYMLINK_NAME" ]]; the
     rm "$INSTALL_DIR/$SYMLINK_NAME"
 fi
 
-echo "Creating symlink: $INSTALL_DIR/$SYMLINK_NAME -> $BIN_DIR/ai-guardrails"
-ln -s "$BIN_DIR/ai-guardrails" "$INSTALL_DIR/$SYMLINK_NAME"
+echo "Creating symlink: $INSTALL_DIR/$SYMLINK_NAME -> $SCRIPT_DIR/ai-guardrails"
+ln -s "$SCRIPT_DIR/ai-guardrails" "$INSTALL_DIR/$SYMLINK_NAME"
 
 # Check if install directory is in PATH
 if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then

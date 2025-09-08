@@ -1,0 +1,51 @@
+name: Root hygiene
+
+on:
+  workflow_call: {}   # reusable (no direct PR trigger)
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  enforce-root-hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Check for new files at repo root (no-op on push)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "Not a PR; skipping root hygiene (passing)."
+            exit 0
+          fi
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          mapfile -t added < <(git diff --name-only --diff-filter=A "$base..$head")
+          if [ "${#added[@]}" -eq 0 ]; then
+            echo "No new files added in this PR."
+            exit 0
+          fi
+          if [ ! -f ".guardrails/root-allowlist.txt" ]; then
+            echo "::warning::No .guardrails/root-allowlist.txt found; skipping enforcement."
+            exit 0
+          fi
+          mapfile -t allow < <(sed -E 's/#.*$//' .guardrails/root-allowlist.txt | sed '/^\s*$/d')
+          shopt -s nullglob dotglob extglob
+          failed=0
+          for path in "${added[@]}"; do
+            # only root-level files (no slash)
+            if [[ "$path" == */* ]]; then continue; fi
+            allowed=0
+            for pat in "${allow[@]}"; do
+              if [[ "$path" == $pat ]]; then allowed=1; break; fi
+            done
+            if [ $allowed -eq 0 ]; then
+              echo "::error file=$path::New file at repo root not in allowlist ($path)"
+              failed=1
+            fi
+          done
+          [ $failed -eq 0 ] || { echo "Root hygiene failed."; exit 1; }
+          echo "Root hygiene OK."

@@ -1,0 +1,6 @@
+enabled_plugins:
+- root-hygiene-kit
+- copilot-acl-kit
+- repo-safety-kit
+- demos-on-rails-kit
+- doc-guardrails-kit

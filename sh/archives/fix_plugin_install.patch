@@ -1,0 +1,37 @@
+--- pyproject.toml (orig)
++++ pyproject.toml (fixed)
+@@ -12,27 +12,15 @@
+ authors = [{ name = "Thomas Doyle", email = "thomas.doyle84@gmail.com" }]
+ dependencies = ["requests>=2.0"]
+ 
+-# Console command(s)
+-# [project.scripts]
++[project.scripts]
++keystone = "packages.operations.doctor:main"
+ 
+-
+-# Optional plugin entry points (custom group)
+-[project.entry-points.keystone]
+-main = "bin.infrastructure_bootstrap:main"
+-
+-
+-# Auto-discover packages under src/ (regular packages with __init__.py)
+ [tool.setuptools.packages.find]
+ where = ["src"]
+ 
+-# If you use PEP420 implicit namespaces, use this instead (see §6):
+-# [tool.setuptools.packages.find]
+-# where = ["src"]
+-# namespaces = true
++[tool.setuptools]
++package-dir = {"" = "src"}
++include-package-data = true
+ 
+-# Setuptools: tell it we use src/ layout
+-[tool.setuptools.package-dir]
+-src = "src"
+-infra = "src.infra"
+-
+-# infra-utils-activate_plugins = "infra.utils::activate_plugins"
++[tool.setuptools.package-data]
++packages = ["plugins/**", "schemas/**", "installation-manifest.yaml", "target-structure.schema.yaml", "ai-guardrails-templates/**"]

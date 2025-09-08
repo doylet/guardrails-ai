@@ -1,0 +1,73 @@
+schema_version: "1.0.0"
+plugin_name: "repo-safety-kit"
+
+metadata:
+  version: "1.0.0"
+  description: "Repository backup and safety tools to protect against data loss"
+  author: "AI Guardrails Team"
+  tags:
+    - "backup"
+    - "safety" 
+    - "repository"
+
+provides_structure:
+  ".ai/scripts/":
+    description: "Repository backup and mirroring scripts"
+    required: false
+    files:
+      "make-local-mirror.sh":
+        description: "Create/update local bare mirror repository"
+        required: false
+        content_type: "shell"
+        executable: true
+      "backup-bundle.sh":
+        description: "Create rotating git bundles for backup"
+        required: false
+        content_type: "shell"
+        executable: true
+      "install-repo-safety.sh":
+        description: "Repository safety installation script"
+        required: false
+        content_type: "shell"
+        executable: true
+        
+  ".githooks/":
+    description: "Git hooks directory for automatic backup"
+    required: false
+    files:
+      "post-commit":
+        description: "Automatic backup after each commit"
+        required: false
+        content_type: "shell"
+        executable: true
+        
+  ".githooks/post-commit.d/":
+    description: "Post-commit hook scripts directory"
+    required: false
+    files:
+      "91-repo-safety-backup.sh":
+        description: "Repository backup hook using semantic ordering"
+        required: false
+        content_type: "shell"
+        executable: true
+        
+  ".vscode/":
+    description: "VS Code settings for repository safety"
+    required: false
+    files:
+      "settings.json":
+        description: "VS Code settings for repository safety"
+        required: false
+        content_type: "json"
+
+requires_structure:
+  - ".ai/"
+  - ".ai/scripts/"
+  - ".githooks/"
+
+dependencies:
+  - "core"
+  - "scripts"
+  - "githooks"
+
+conflicts_with: []

@@ -1,0 +1,64 @@
+---
+# Plugin Structure Schema for commit-msg-kit
+# Extracted from directory analysis on 2025-01-06
+
+schema_version: "1.0.0"
+plugin_name: "commit-msg-kit"
+
+# Structure provided by this plugin
+provides_structure:
+  ".gitmessage.txt":
+    description: "Git commit message template with conventional format guidance"
+    required: true
+    content_type: "text"
+    
+  ".ai/":
+    description: "Plugin installation and management scripts"
+    required: true
+    subdirectories:
+      "scripts/":
+        description: "Installation scripts"
+        required: true
+        files:
+          "install-githooks.sh":
+            description: "Installs commit-msg hooks into git repository"
+            required: true
+            executable: true
+            content_type: "shell"
+        
+  ".githooks/":
+    description: "Commit message validation hooks directory"
+    required: true
+    subdirectories:
+      "commit-msg.d/":
+        description: "Commit message hook scripts"
+        required: true
+        files:
+          "11-commit-msg-msg-validation.sh":
+            description: "Validates commit messages against conventional format"
+            required: true
+            executable: true
+            content_type: "shell"
+        
+  ".vscode/":
+    description: "VS Code workspace configuration"
+    required: false
+    files:
+      "settings.json":
+        description: "VS Code settings for commit message assistance"
+        required: false
+        content_type: "json"
+
+# Dependencies this plugin requires
+requires_structure:
+  - ".git/"
+
+# Potential conflicts with other plugins
+conflicts_with: []
+
+# Metadata
+metadata:
+  version: "1.0.0"
+  description: "Commit message validation and formatting tools"
+  author: "bootstrap-dev"
+  tags: ["commit-hooks", "validation", "conventional-commits"]

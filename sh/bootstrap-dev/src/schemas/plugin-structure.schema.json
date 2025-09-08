@@ -1,0 +1,161 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ai-guardrails.dev/schemas/plugin-structure.schema.json",
+  "title": "Plugin Structure Schema",
+  "description": "Schema definition for plugin structure specifications, defining what file structure a plugin provides and requires",
+  "type": "object",
+  "required": ["schema_version", "plugin_name", "provides_structure"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of the plugin structure schema format",
+      "examples": ["1.0.0"]
+    },
+    "plugin_name": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Name of the plugin, must match plugin directory name",
+      "examples": ["guardrails-acl-kit", "repo-safety-kit"]
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Optional metadata about the plugin structure",
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "Version of the plugin structure definition"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of the plugin structure"
+        },
+        "author": {
+          "type": "string",
+          "description": "Author or maintainer of the plugin"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tags for categorizing the plugin"
+        }
+      }
+    },
+    "provides_structure": {
+      "type": "object",
+      "description": "Directory and file structure provided by this plugin",
+      "patternProperties": {
+        "^[^\\s]+/$": {
+          "$ref": "#/definitions/directory_definition"
+        },
+        "^[^\\s]+$": {
+          "$ref": "#/definitions/file_definition"
+        }
+      },
+      "additionalProperties": false
+    },
+    "requires_structure": {
+      "type": "array",
+      "description": "Directory/file paths that must exist for this plugin to work",
+      "items": {
+        "type": "string",
+        "description": "Required path (directory should end with /)"
+      },
+      "examples": [".ai/", ".ai/scripts/", ".githooks/"]
+    },
+    "conflicts_with": {
+      "type": "array",
+      "description": "List of plugin names or patterns that conflict with this plugin",
+      "items": {
+        "type": "string",
+        "description": "Plugin name or pattern that conflicts"
+      },
+      "examples": ["legacy-acl-system", "*-acl-*"]
+    },
+    "dependencies": {
+      "type": "array",
+      "description": "List of plugin names that this plugin depends on",
+      "items": {
+        "type": "string",
+        "description": "Plugin name that this plugin depends on"
+      },
+      "examples": ["core", "githooks"]
+    }
+  },
+  "definitions": {
+    "directory_definition": {
+      "type": "object",
+      "description": "Definition of a directory structure",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of the directory"
+        },
+        "required": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this directory must exist"
+        },
+        "files": {
+          "type": "object",
+          "description": "Files within this directory",
+          "patternProperties": {
+            "^[^/\\s]+$": {
+              "$ref": "#/definitions/file_definition"
+            }
+          },
+          "additionalProperties": false
+        },
+        "subdirectories": {
+          "type": "object",
+          "description": "Subdirectories within this directory",
+          "patternProperties": {
+            "^[^/\\s]+/$": {
+              "$ref": "#/definitions/directory_definition"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "file_definition": {
+      "type": "object",
+      "description": "Definition of a file",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of the file"
+        },
+        "required": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this file must exist"
+        },
+        "schema_ref": {
+          "type": "string",
+          "description": "Reference to a schema that validates this file's content",
+          "examples": ["acl.schema.json", "guardrails.schema.yaml"]
+        },
+        "content_type": {
+          "type": "string",
+          "enum": ["yaml", "json", "shell", "python", "markdown", "text", "binary"],
+          "description": "Expected content type of the file"
+        },
+        "executable": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this file should be executable"
+        },
+        "template_vars": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Template variables used in this file"
+        }
+      }
+    }
+  }
+}

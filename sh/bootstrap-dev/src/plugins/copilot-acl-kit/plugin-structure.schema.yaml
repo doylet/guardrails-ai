@@ -1,0 +1,79 @@
+---
+schema_version: "1.0.0"
+plugin_name: "copilot-acl-kit"
+
+provides_structure:
+  "README.txt":
+    description: "Plugin documentation and usage instructions"
+    required: false
+    content_type: "text"
+    
+  ".ai/":
+    description: "ACL configuration and scripts"
+    required: true
+    subdirectories:
+      "guardrails/":
+        description: "ACL policy configuration directory"
+        required: true
+        files:
+          "copilot-acl.yaml":
+            description: "ACL policy configuration and rules"
+            required: true
+            content_type: "yaml"
+      "scripts/":
+        description: "ACL installation and policy scripts"
+        required: true
+        files:
+          "install-acl.sh":
+            description: "ACL installation and setup script"
+            required: true
+            executable: true
+            content_type: "shell"
+        subdirectories:
+          "policy/":
+            description: "ACL validation policy scripts"
+            required: true
+            files:
+              "acl_check.py":
+                description: "ACL validation and enforcement script"
+                required: true
+                executable: true
+                content_type: "python"
+        
+  ".githooks/":
+    description: "Pre-commit hooks for ACL enforcement"
+    required: true
+    subdirectories:
+      "pre-commit.d/":
+        description: "Pre-commit hook directory"
+        required: true
+        files:
+          "35-copilot-acl-main.sh":
+            description: "Pre-commit hook for ACL enforcement"
+            required: true
+            executable: true
+            content_type: "shell"
+        
+  ".github/":
+    description: "GitHub workflows for ACL enforcement"
+    required: true
+    subdirectories:
+      "workflows/":
+        description: "Workflow definitions"
+        required: true
+        files:
+          "copilot-acl.yml":
+            description: "GitHub workflow for ACL enforcement in CI/CD"
+            required: true
+            content_type: "yaml"
+
+requires_structure:
+  - ".git/"
+
+conflicts_with: []
+
+metadata:
+  version: "1.0.0"
+  description: "Access Control List enforcement for repository files and workflows"
+  author: "bootstrap-dev"
+  tags: ["acl", "security", "access-control", "hooks", "workflows"]

@@ -1,0 +1,27 @@
+docs:
+  validation:
+    enabled: true
+    adr:
+      required_sections:
+        - Title
+        - Status
+        - Context
+        - Decision
+        - Consequences
+    coe:
+      required_sections:
+        - Overview
+        - Scope
+        - Responsibilities
+        - Success Metrics
+    sprint_plans:
+      required_sections:
+        - Sprint Overview
+        - Goals
+        - Deliverables
+        - Timeline
+
+  paths:
+    adrs: "docs/decisions/"
+    coe: "docs/coe/"
+    sprints: "docs/sprints/"

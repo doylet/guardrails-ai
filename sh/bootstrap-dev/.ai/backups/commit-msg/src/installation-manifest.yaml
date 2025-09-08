@@ -1,0 +1,99 @@
+---
+# AI Guardrails Installation Manifest
+# Infrastructure-as-code approach - NO hardcoded file lists in shell scripts
+version: "1.0.0"
+name: "ai-guardrails-installation"
+
+# File discovery patterns instead of hardcoded lists
+components:
+  core:
+    description: "Core AI guardrails configuration"
+    file_patterns:
+      - ".ai/*.yaml"
+      - ".ai/*.json"
+
+  schemas:
+    description: "JSON schemas for validation"
+    file_patterns:
+      - ".ai/schemas/*.json"
+
+  scripts:
+    description: "All automation scripts"
+    file_patterns:
+      - ".ai/scripts/**/*.py"   # Recursive pattern to include subdirectories
+      - ".ai/scripts/**/*.sh"   # Recursive pattern to include subdirectories
+    post_install:
+      - "chmod +x .ai/scripts/**/*.py .ai/scripts/**/*.sh"
+
+  github:
+    description: "GitHub integration files"
+    file_patterns:
+      - "templates/.github/**/*"
+    target_prefix: "templates/"  # Remove 'templates/' prefix when installing
+
+  githooks:
+    description: "Modular git hooks infrastructure"
+    file_patterns:
+      - ".githooks/**/*"
+    post_install:
+      - "chmod +x .githooks/*"
+      - "git config core.hooksPath .githooks || true"  # Ignore if not in git repo
+
+  precommit:
+    description: "Pre-commit configuration"
+    file_patterns:
+      - ".pre-commit-config.yaml.example"
+    destination_mappings:
+      ".pre-commit-config.yaml.example": ".pre-commit-config.yaml"
+
+  docs:
+    description: "All documentation templates"
+    file_patterns:
+      - "templates/docs/**/*"
+      - "templates/.ai/*.md"  # capabilities.md etc
+    target_prefix: "templates/"  # Remove 'templates/' prefix when installing
+    destination_mappings:
+      ".template": ""  # Remove .template extension from all template files
+
+# Installation profiles - reference components, not files
+profiles:
+  minimal:
+    description: "Minimal installation - core only"
+    components: ["core", "schemas"]
+
+  standard:
+    description: "Standard installation for most projects"
+    components: ["core", "schemas", "scripts", "githooks", "precommit", "docs"]
+
+  full:
+    description: "Full installation with GitHub integration"
+    components: ["core", "schemas", "scripts", "githooks", "github", "precommit", "docs"]
+
+# Environment detection rules
+environment_detection:
+  has_github:
+    check: "test -d .git && git remote -v | grep -q github"
+  has_python:
+    check: "command -v python3 >/dev/null || command -v python >/dev/null"
+  has_node:
+    check: "command -v node >/dev/null && test -f package.json"
+
+# Global settings
+settings:
+  # Template repository configuration
+  template_repository: "ai-guardrails-templates"  # Relative to manifest directory (src/)
+
+  # Plugin repository configuration
+  plugins_directory: "plugins"  # Relative to manifest directory (src/)
+
+  # Target structure validation
+  target_structure_schema: "target-structure.schema.yaml"  # Expected directory structure
+
+  auto_create_directories: true
+  preserve_existing: true  # Don't overwrite without --force
+  validate_before_install: true
+  validate_target_structure: true  # Validate against target schema after install
+  update_gitignore: true
+  gitignore_entries:
+    - ".ai/envelope.json"
+    - ".ai/*.local"

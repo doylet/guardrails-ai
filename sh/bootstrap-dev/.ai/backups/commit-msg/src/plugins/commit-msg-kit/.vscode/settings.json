@@ -1,0 +1,5 @@
+{
+  // Optional: show warnings if subject too long in Source Control input
+  "git.inputValidation": "warn",
+  "git.inputValidationSubjectLength": 72
+}

@@ -1,0 +1,42 @@
+---
+schema_version: "1.0.0"
+plugin_name: "doc-guardrails-kit"
+
+metadata:
+  version: "1.0.0"
+  description: "Documentation validation and quality guardrails"
+  author: "AI Guardrails Team"
+  category: "documentation"
+  tags: ["docs", "validation", "quality", "templates", "workflows"]
+  maintainer: "bootstrap-dev"
+  documentation: "docs/validation/README.md"
+
+provides_structure:
+  ".ai/":
+    description: "AI guardrails configuration and scripts"
+    required: true
+      
+  ".ai/scripts/":
+    description: "Documentation validation scripts"
+    required: true
+      
+  ".github/workflows/":
+    description: "GitHub workflows for documentation validation"
+    required: true
+      
+  "docs/":
+    description: "Documentation structure and templates"
+    required: true
+      
+  "docs/templates/":
+    description: "Documentation templates and examples"
+    required: true
+      
+  "docs/validation/":
+    description: "Documentation validation guides and rules"
+    required: true
+
+requires_structure:
+  - ".git/"
+      
+conflicts_with: []

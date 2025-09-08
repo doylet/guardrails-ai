@@ -1,0 +1,37 @@
+---
+schema_version: "1.0.0"
+plugin_name: "root-hygiene-kit"
+
+metadata:
+  version: "1.0.0"
+  description: "Root directory cleanliness and organization enforcement"
+  author: "AI Guardrails Team"
+  category: "organization"
+  tags: ["hygiene", "organization", "root", "cleanup", "enforcement"]
+  maintainer: "bootstrap-dev"
+
+provides_structure:
+  ".ai/guardrails/":
+    description: "Root hygiene policy and allowlist configuration"
+    required: true
+      
+  ".ai/scripts/":
+    description: "Root hygiene installation and cleanup scripts"
+    required: true
+      
+  ".ai/snippets/":
+    description: "Configuration snippets for root hygiene"
+    required: true
+      
+  ".githooks/pre-commit.d/":
+    description: "Pre-commit hooks for root hygiene enforcement"
+    required: true
+      
+  ".github/workflows/":
+    description: "GitHub workflows for root hygiene validation"
+    required: true
+
+requires_structure:
+  - ".git/"
+      
+conflicts_with: []
