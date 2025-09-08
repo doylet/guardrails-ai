@@ -1,0 +1,33 @@
+# .ai/guardrails/acl.yml
+version: 1
+defaults:
+  mode: enforce
+  actions: [create, modify, delete, rename]
+
+rules:
+  - name: "Workflow & hooks are maintainer-owned"
+    paths: [".github/workflows/**", ".githooks/**", "ai/scripts/policy/**"]
+    allow: ["@maintainers"]
+    require_reviews_from: ["@maintainers"]
+    mode: enforce
+
+  - name: "Secrets are locked"
+    paths: ["secrets/**", ".env*", "config/*.key"]
+    allow: ["@secops"]
+    require_reviews_from: ["@secops"]
+    mode: enforce
+
+  - name: "Docs open"
+    paths: ["docs/**", "**/*.md"]
+    allow: ["*"]
+    mode: warn
+
+  - name: "Default"
+    paths: ["**"]
+    allow: ["@contributors"]
+    mode: enforce
+
+aliases:
+  "@maintainers": ["@yourorg/maintainers", "@thomasdoyle"]
+  "@secops": ["@yourorg/secops"]
+  "@contributors": ["*"]

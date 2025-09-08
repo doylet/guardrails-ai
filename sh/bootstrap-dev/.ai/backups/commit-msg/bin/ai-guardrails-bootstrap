@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+"""
+AI Guardrails Bootstrap Manager
+Modern entry point using the new src engine architecture
+"""
+
+import sys
+from pathlib import Path
+
+# Add src to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
+# Import new CLI main function
+try:
+    from packages.cli.main import main
+except ImportError:
+    # Fallback for development/testing
+    print("Warning: Using fallback import for packages.cli.main", file=sys.stderr)
+    sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "packages"))
+    from cli.main import main
+
+if __name__ == "__main__":
+    sys.exit(main())

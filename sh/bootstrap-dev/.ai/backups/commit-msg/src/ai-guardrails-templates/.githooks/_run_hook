@@ -1,0 +1,20 @@
+
+# .githooks/_run_hook  (symlink pre-commit  _run_hook, commit-msg  _run_hook, etc.)
+#!/usr/bin/env bash
+set -euo pipefail
+hook="$(basename "$0")"                    # e.g. "pre-commit", "commit-msg"
+repo="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+dir="$repo/.githooks/${hook}.d"
+
+# Stable, POSIX-ish ordering
+if [ -d "$dir" ]; then
+  # ensure predictable sort even across locales
+  LC_ALL=C
+  for s in "$dir"/*; do
+    [ -f "$s" ] && [ -x "$s" ] || continue  # only executable regular files
+    "$s" "$@"                                # pass hook args through (commit-msg gets $1)
+  done
+fi
+
+# Optional: allow non-versioned local overrides
+[ -x "$repo/.git/hooks.local/$hook" ] && "$repo/.git/hooks.local/$hook" "$@"

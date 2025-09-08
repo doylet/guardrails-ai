@@ -1,0 +1,51 @@
+name: Commit message lint
+
+on:
+  workflow_call: {}   # reusable (no direct PR trigger to avoid double runs)
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  lint-commit-messages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Validate all commits in the PR (no-op on push)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "Not a PR; skipping commit checks (passing)."
+            exit 0
+          fi
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          echo "Range: $base..$head"
+          commits=$(git rev-list "$base..$head")
+          if [ -z "$commits" ]; then
+            echo "No commits to check."
+            exit 0
+          fi
+          limit_subject=72
+          limit_body_lines=30
+          fail=0
+          for c in $commits; do
+            msg="$(git log --format=%B -n 1 "$c")"
+            subject="$(printf '%s\n' "$msg" | sed -n '1p')"
+            body="$(printf '%s\n' "$msg" | sed -n '2,$p')"
+            subj_len=$(printf '%s' "$subject" | wc -m | tr -d ' ')
+            body_lines=$(printf '%s\n' "$body" | grep -vE '^[#;]' | wc -l | tr -d ' ')
+            if [ "$subj_len" -gt "$limit_subject" ]; then
+              echo "::error file=COMMIT_MSG::$c subject too long (${subj_len} > ${limit_subject}): $subject"
+              fail=1
+            fi
+            if [ "$body_lines" -gt "$limit_body_lines" ]; then
+              echo "::error file=COMMIT_MSG::$c body too long (${body_lines} > ${limit_body_lines})"
+              fail=1
+            fi
+          done
+          [ "$fail" -eq 0 ] || { echo "Commit message lint failed."; exit 1; }
+          echo "Commit messages look good."

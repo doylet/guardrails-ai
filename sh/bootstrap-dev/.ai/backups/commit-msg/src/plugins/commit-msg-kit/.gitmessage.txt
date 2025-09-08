@@ -1,0 +1,6 @@
+type(scope): short subject <= 72 chars
+
+Explain what & why, not how. Wrap at 72 columns.
+Include context/motivation and notable side effects or tradeoffs.
+
+Refs: #123

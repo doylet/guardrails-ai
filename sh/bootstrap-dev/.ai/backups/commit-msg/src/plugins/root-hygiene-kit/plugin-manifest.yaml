@@ -1,0 +1,40 @@
+plugin:
+  name: root-hygiene-kit
+  version: 1.0.0
+  description: Root directory organization and cleanup tools
+  author: AI Guardrails Team
+  dependencies:
+  - core
+  environment:
+    detects:
+    - git
+    requires:
+    - git
+components:
+  root-hygiene:
+    description: Root directory cleanup and organization tools
+    file_patterns:
+    - .githooks/**/*
+    - .ai/guardrails/**/*
+    - .ai/scripts/**/*
+    - ai/snippets/**/*
+  github-hygiene:
+    description: GitHub workflows for root hygiene
+    file_patterns:
+    - .github/**/*
+profiles:
+  root-hygiene-standard:
+    description: Standard root hygiene setup with hooks and scripts
+    components:
+    - root-hygiene
+  root-hygiene-full:
+    description: Full root hygiene setup including GitHub workflows
+    components:
+    - root-hygiene
+    - github-hygiene
+hooks:
+  pre_commit:
+    category: cleanup
+    priority: 10
+    script: 91-root-hygiene-cleanup.sh
+    description: Migrated from 10-root-hygiene.sh

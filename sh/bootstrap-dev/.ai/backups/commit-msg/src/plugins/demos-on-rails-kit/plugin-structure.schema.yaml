@@ -1,0 +1,111 @@
+---
+# Plugin Structure Schema for demos-on-rails-kit
+# Extracted from directory analysis on 2025-01-06
+
+schema_version: "1.0.0"
+plugin_name: "demos-on-rails-kit"
+
+# Structure provided by this plugin
+provides_structure:
+  ".env.example":
+    description: "Environment configuration template for demo scenarios"
+    required: false
+    content_type: "text"
+    
+  ".pre-commit-config.yaml.example":
+    description: "Pre-commit hooks configuration template"
+    required: false
+    content_type: "yaml"
+    
+  "run.sh":
+    description: "Demo execution runner script"
+    required: true
+    executable: true
+    content_type: "shell"
+    
+  "test_integration.py":
+    description: "Integration tests for demo scenarios"
+    required: true
+    content_type: "python"
+    
+  ".ai/":
+    description: "AI guardrails configuration and demo tooling"
+    required: true
+    files:
+      "__init__.py":
+        description: "Python package initialization"
+        required: true
+        content_type: "python"
+      "guardrails.yaml":
+        description: "AI guardrails configuration for demos"
+        required: true
+        content_type: "yaml"
+    subdirectories:
+      "demo_scenarios/":
+        description: "Demo scenario definitions and validation data"
+        required: true
+      "scripts/":
+        description: "Demo validation and execution scripts"
+        required: true
+        files:
+          "validate_demo_scenarios.py":
+            description: "Demo scenario validation script"
+            required: true
+            executable: true
+            content_type: "python"
+      "tools/":
+        description: "Demo harness and bridge tools"
+        required: true
+        files:
+          "__init__.py":
+            description: "Python package initialization"
+            required: true
+            content_type: "python"
+          "_bridge.py":
+            description: "Bridge between demo harness and AI guardrails"
+            required: true
+            content_type: "python"
+          "demo_harness.py":
+            description: "Main demo execution harness"
+            required: true
+            executable: true
+            content_type: "python"
+            
+  ".github/":
+    description: "Demo CI/CD workflows for guardrails validation"
+    required: true
+    subdirectories:
+      "workflows/":
+        description: "GitHub workflow definitions"
+        required: true
+        files:
+          "ai_guardrails_on_commit.yaml":
+            description: "CI workflow for guardrails validation on commits"
+            required: true
+            content_type: "yaml"
+          "demo-gate.yaml":
+            description: "Demo validation gate workflow"
+            required: true
+            content_type: "yaml"
+            
+  "docs/":
+    description: "Demo integration documentation"
+    required: false
+    
+  "tests/":
+    description: "Test suite for demo functionality"
+    required: true
+
+# Dependencies this plugin requires
+requires_structure:
+  - ".git/"
+
+# Potential conflicts with other plugins
+conflicts_with: []
+
+# Metadata
+metadata:
+  version: "1.0.0"
+  description: "Demo harness ensuring production interface compliance"
+  author: "bootstrap-dev"
+  tags: ["demos", "validation", "ci-cd", "guardrails"]

@@ -1,0 +1,37 @@
+# .github/workflows/guardrails.yml
+name: guardrails
+on:
+  pull_request:
+    paths:
+      - "**/*.py"
+      - "demo_scenarios/**"
+      - ".ai/**"
+      - "tools/demo_harness.py"
+
+jobs:
+  guardrails:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps (if ai-guardrails has a CLI)
+        run: |
+          pip install -U pip
+          pip install -e .  || true   # your repo if needed
+          pip install ai-guardrails   || true
+
+      - name: Validate ai-guardrails policy
+        run: |
+          ai-guardrails validate --config .ai/guardrails.yaml
+
+      - name: Demo lint (blocks internal imports in demos)
+        run: |
+          python scripts/check_demo_on_rails.py
+
+      - name: Smoke demo via harness (non-blocking if your CLI isn’t wired yet)
+        run: |
+          python tools/demo_harness.py run demo_scenarios/example.yaml || true

@@ -1,0 +1,25 @@
+name: ACL gate
+on: { workflow_call: {} }
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  enforce-acl:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Install checker deps
+        run: python -m pip install --upgrade pip pyyaml
+      - name: Enforce ACL rules
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "Not a PR; skipping ACL enforcement."; exit 0; fi
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          python ai/scripts/policy/acl_check.py --range="$base..$head" --enforce
