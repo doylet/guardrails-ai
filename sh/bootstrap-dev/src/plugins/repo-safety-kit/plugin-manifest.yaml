@@ -45,7 +45,7 @@ profiles:
     - repo-backup-scripts
     - repo-safety-hooks
     - repo-safety-vscode
-configuration:
+    
 post_install:
 - bash .ai/scripts/install-repo-safety.sh
 hooks:
