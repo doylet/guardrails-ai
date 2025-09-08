@@ -32,6 +32,7 @@ class Installer:
         target_dir: Path,
         receipts_adapter: ReceiptsAdapter,
         yaml_ops: YamlOpsAdapter,
+        template_repo: Path = None,
     ):
         """Initialize installer with required adapters.
 
@@ -39,10 +40,12 @@ class Installer:
             target_dir: Target directory for installation
             receipts_adapter: Adapter for receipt tracking
             yaml_ops: Adapter for YAML/JSON operations
+            template_repo: Template repository path for resolving relative source paths
         """
         self.target_dir = target_dir
         self.receipts_adapter = receipts_adapter
         self.yaml_ops = yaml_ops
+        self.template_repo = template_repo
         self.logger = get_logger(__name__)
 
     def install_plan(
@@ -133,8 +136,10 @@ class Installer:
                 # The staging context manager will promote to target
 
             # Write receipt after successful promotion
+            from datetime import datetime
             receipt = Receipt(
                 component_id=component_name,
+                installed_at=datetime.now().isoformat(),
                 manifest_hash=component_plan.manifest_hash,
                 files=component_plan.file_actions,
                 metadata={
@@ -162,27 +167,60 @@ class Installer:
             TransactionError: If action execution fails
         """
         try:
-            target_path = staging_dir / action.target_path.relative_to(self.target_dir)
+            # Handle both relative and absolute target paths
+            if action.target_path.is_absolute():
+                # If target_path is absolute, make it relative to target_dir
+                try:
+                    relative_target = action.target_path.relative_to(self.target_dir)
+                    target_path = staging_dir / relative_target
+                except ValueError:
+                    # Path is not under target_dir, this is an error
+                    raise TransactionError(
+                        f"Target path {action.target_path} is not under target directory {self.target_dir}",
+                        component="installer",
+                        operation="file_action"
+                    )
+            else:
+                # target_path is already relative
+                target_path = staging_dir / action.target_path
 
             # Ensure parent directory exists
             safe_mkdir(target_path.parent, create_sentinel=False)
 
             if action.action_type == "COPY":
-                shutil.copy2(action.source_path, target_path)
+                # Resolve relative source path to absolute path
+                if not action.source_path.is_absolute():
+                    resolved_source = self.template_repo / action.source_path
+                else:
+                    resolved_source = action.source_path
+                    
+                shutil.copy2(resolved_source, target_path)
 
             elif action.action_type == "MERGE":
+                # Resolve relative source path to absolute path
+                if not action.source_path.is_absolute():
+                    resolved_source = self.template_repo / action.source_path
+                else:
+                    resolved_source = action.source_path
+                    
                 # Use YAML ops for content merging
                 merged_content = self.yaml_ops.merge_content(
-                    action.source_path,
+                    resolved_source,
                     target_path if target_path.exists() else None,
                     strategy="deep_merge"
                 )
                 atomic_write(merged_content, target_path)
 
             elif action.action_type == "TEMPLATE":
-                # Use YAML ops for template processing
-                processed_content = self.yaml_ops.process_template(
-                    action.source_path,
+                # Resolve relative source path to absolute path
+                if not action.source_path.is_absolute():
+                    resolved_source = self.template_repo / action.source_path
+                else:
+                    resolved_source = action.source_path
+                    
+                # Use YAML ops for template processing (render_template takes file path)
+                processed_content = self.yaml_ops.render_template(
+                    str(resolved_source),
                     action.metadata.get("variables", {})
                 )
                 atomic_write(processed_content, target_path)
@@ -194,19 +232,15 @@ class Installer:
             else:
                 raise TransactionError(
                     f"Unknown action type: {action.action_type}",
-                    operation="file_action",
-                    details={"action_type": action.action_type}
+                    component="installer",
+                    operation="file_action"
                 )
 
         except Exception as e:
             raise TransactionError(
                 f"Failed to execute action {action.action_type} for {action.target_path}: {e}",
-                operation="file_action",
-                details={
-                    "action_type": action.action_type,
-                    "source_path": str(action.source_path),
-                    "target_path": str(action.target_path),
-                }
+                component="installer",
+                operation="file_action"
             ) from e
 
     def _rollback_components(self, component_names: List[str]) -> None:

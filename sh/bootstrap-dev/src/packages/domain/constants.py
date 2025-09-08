@@ -74,7 +74,7 @@ CONFIG_FILES = {
 
 # Backup and staging directory patterns
 STAGING_PREFIX = ".staging"
-BACKUP_PREFIX = ".backup"
+BACKUP_PREFIX = ".ai/backups"  # Consolidated hidden backup directory
 SENTINEL_SUFFIX = ".bootstrap-sentinel"
 
 # Hash and receipt metadata

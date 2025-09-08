@@ -56,6 +56,7 @@ class Orchestrator:
             target_dir=self.target_dir,
             receipts_adapter=self.receipts_adapter,
             yaml_ops=self.yaml_ops,
+            template_repo=bootstrap_root / "src" / "ai-guardrails-templates",
         )
         self.doctor_service = Doctor(
             target_dir=self.target_dir,

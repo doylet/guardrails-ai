@@ -1,6 +1,19 @@
 """Receipt management for idempotency tracking and state validation.
 
-This module manages installation receipts that track what components have been
+This module manages installation receipts that track what component                f"Fail        try:
+            atomic_write(receipt_json, receipt_path)
+            # Create adapter Receipt for cache
+            adapter_receipt = Receipt.from_dict(receipt_data)
+            self._receipt_cache[receipt.component_id] = adapter_receipt
+            logger.debug(f"Wrote receipt for component: {receipt.component_id}")
+
+        except Exception as e:
+            raise TransactionError(
+                f"Failed to write receipt for {receipt.component_id}: {e}",
+                component="receipts",
+                operation="write_receipt"
+            )te receipt for {receipt.component_id}: {e}",
+                receipt.component_id,have been
 installed, their file hashes, and metadata needed for drift detection and
 idempotent operations.
 """
@@ -72,8 +85,13 @@ class Receipt:
     @classmethod
     def from_dict(cls, data: Dict) -> "Receipt":
         """Create receipt from dictionary."""
+        # Handle both old and new receipt formats
+        component_name = data.get("component_name") or data.get("component_id")
+        if not component_name:
+            raise ValueError("Receipt missing component_name/component_id")
+            
         receipt = cls(
-            component_name=data["component_name"],
+            component_name=component_name,
             plugin_id=data.get("plugin_id"),
             manifest_digest=data.get("manifest_digest", ""),
             installed_at=data.get("installed_at"),
@@ -124,14 +142,37 @@ class ReceiptsAdapter:
         """
         self.ensure_receipts_dir()
 
-        receipt_path = self.receipts_dir / f"{receipt.component_name}.json"
-        receipt_data = receipt.to_dict()
+        receipt_path = self.receipts_dir / f"{receipt.component_id}.json"
+        
+        # Convert domain Receipt to adapter format
+        if hasattr(receipt, 'to_dict') and callable(receipt.to_dict):
+            # Domain Receipt - convert to adapter format
+            receipt_data = {
+                "component_name": receipt.component_id,  # Map component_id to component_name
+                "installed_at": receipt.installed_at,
+                "manifest_digest": receipt.manifest_hash,
+                "plugin_id": getattr(receipt, 'plugin_id', None),
+                "version": RECEIPT_VERSION,
+                "files": {}
+            }
+            # Convert FileAction list to dict format
+            if hasattr(receipt, 'files') and receipt.files:
+                for action in receipt.files:
+                    receipt_data["files"][str(action.target_path)] = {
+                        "hash": action.target_hash,
+                        "action": action.action_type,
+                        "source": str(action.source_path)
+                    }
+        else:
+            # Adapter Receipt - use as is
+            receipt_data = receipt.to_dict()
+            
         receipt_json = json.dumps(receipt_data, indent=2, sort_keys=True)
 
         try:
             atomic_write(receipt_json, receipt_path)
-            self._receipt_cache[receipt.component_name] = receipt
-            logger.debug(f"Wrote receipt for component: {receipt.component_name}")
+            self._receipt_cache[receipt.component_id] = receipt
+            logger.debug(f"Wrote receipt for component: {receipt.component_id}")
 
         except Exception as e:
             raise TransactionError(
@@ -188,6 +229,14 @@ class ReceiptsAdapter:
 
         except Exception as e:
             logger.warning(f"Failed to delete receipt for {component_name}: {e}")
+
+    def remove_receipt(self, component_name: str) -> None:
+        """Remove component receipt (alias for delete_receipt).
+
+        Args:
+            component_name: Name of component
+        """
+        self.delete_receipt(component_name)
 
     def list_installed_components(self) -> List[str]:
         """List all components with receipts.
@@ -354,7 +403,7 @@ class ReceiptsAdapter:
         total_size = sum(f.get("size", 0) for f in receipt.files.values())
 
         return {
-            "name": receipt.component_name,
+            "name": receipt.component_id,  # Legacy format uses "name" 
             "plugin_id": receipt.plugin_id,
             "manifest_digest": receipt.manifest_digest,
             "installed_at": receipt.installed_at,

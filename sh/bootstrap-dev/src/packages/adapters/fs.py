@@ -126,7 +126,7 @@ def staging(component_name: str, target_dir: Path) -> Generator[Path, None, None
     """
     target_dir = Path(target_dir).resolve()
     staging_dir = target_dir / f"{STAGING_PREFIX}-{component_name}"
-    backup_dir = target_dir / f"{BACKUP_PREFIX}-{component_name}"
+    backup_dir = target_dir / BACKUP_PREFIX / component_name
 
     try:
         # Create staging directory
@@ -136,13 +136,30 @@ def staging(component_name: str, target_dir: Path) -> Generator[Path, None, None
 
         # Success: backup existing files and promote staged files
         if any(target_dir.iterdir()):
+            # Directories to exclude from backup (system dirs, existing backups)
+            exclude_dirs = {'.git', 'node_modules', '__pycache__', '.venv'}
+            
             safe_mkdir(backup_dir, create_sentinel=True)
             for item in target_dir.iterdir():
-                if item.name.startswith((STAGING_PREFIX, BACKUP_PREFIX)):
+                if item.name.startswith(STAGING_PREFIX):
                     continue
+                if item.name in exclude_dirs:
+                    continue
+                
                 backup_item = backup_dir / item.name
                 if item.is_dir():
-                    shutil.copytree(item, backup_item)
+                    # Special handling for .ai directory to avoid backing up backups
+                    if item.name == '.ai':
+                        backup_item.mkdir(parents=True, exist_ok=True)
+                        for ai_item in item.iterdir():
+                            if ai_item.name != 'backups':  # Skip the backups subdirectory
+                                ai_backup_item = backup_item / ai_item.name
+                                if ai_item.is_dir():
+                                    shutil.copytree(ai_item, ai_backup_item, dirs_exist_ok=True)
+                                else:
+                                    shutil.copy2(ai_item, ai_backup_item)
+                    else:
+                        shutil.copytree(item, backup_item, dirs_exist_ok=True)
                 else:
                     shutil.copy2(item, backup_item)
 

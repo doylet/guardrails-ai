@@ -63,7 +63,7 @@ class Doctor:
             resolver: Optional resolver for manifest operations
             template_repo: Template repository path for base components
         """
-        self.target_dir = target_dir
+        self.target_dir = Path(target_dir)
         self.receipts_adapter = receipts_adapter
         self.hashing_adapter = hashing_adapter
         self.resolver = resolver
@@ -166,36 +166,72 @@ class Doctor:
                 return diagnostics
 
             # Check each file in the receipt
-            for file_action in receipt.files:
-                target_path = file_action.target_path
+            # Handle both new domain format (list of FileAction) and adapter format (dict)
+            if isinstance(receipt.files, list):
+                # Domain Receipt format - list of FileAction objects
+                for file_action in receipt.files:
+                    target_path = file_action.target_path
 
-                # Check if file exists
-                if not target_path.exists():
-                    if include_missing:
-                        diagnostics.append(DoctorDiagnostic(
-                            severity="error",
-                            component=component_name,
-                            message=f"Missing file: {target_path}",
-                            details={"path": str(target_path)},
-                            repairable=True,
-                        ))
-                    continue
+                    # Check if file exists
+                    if not target_path.exists():
+                        if include_missing:
+                            diagnostics.append(DoctorDiagnostic(
+                                severity="error",
+                                component=component_name,
+                                message=f"Missing file: {target_path}",
+                                details={"path": str(target_path)},
+                                repairable=True,
+                            ))
+                        continue
 
-                # Check file content drift
-                if include_drift and file_action.target_hash:
-                    current_hash = self.hashing_adapter.hash_file(target_path)
-                    if current_hash != file_action.target_hash:
-                        diagnostics.append(DoctorDiagnostic(
-                            severity="warning",
-                            component=component_name,
-                            message=f"File content drift: {target_path}",
-                            details={
-                                "path": str(target_path),
-                                "expected_hash": file_action.target_hash,
-                                "actual_hash": current_hash,
-                            },
-                            repairable=True,
-                        ))
+                    # Check file content drift
+                    if include_drift and file_action.target_hash:
+                        current_hash = self.hashing_adapter.hash_file(target_path)
+                        if current_hash != file_action.target_hash:
+                            diagnostics.append(DoctorDiagnostic(
+                                severity="warning",
+                                component=component_name,
+                                message=f"File content drift: {target_path}",
+                                details={
+                                    "path": str(target_path),
+                                    "expected_hash": file_action.target_hash,
+                                    "actual_hash": current_hash,
+                                },
+                                repairable=True,
+                            ))
+                            
+            elif isinstance(receipt.files, dict):
+                # Adapter Receipt format - dict mapping paths to metadata
+                for file_path, file_metadata in receipt.files.items():
+                    target_path = self.target_dir / file_path
+
+                    # Check if file exists
+                    if not target_path.exists():
+                        if include_missing:
+                            diagnostics.append(DoctorDiagnostic(
+                                severity="error",
+                                component=component_name,
+                                message=f"Missing file: {target_path}",
+                                details={"path": str(target_path)},
+                                repairable=True,
+                            ))
+                        continue
+
+                    # Check file content drift
+                    if include_drift and file_metadata.get("hash"):
+                        current_hash = self.hashing_adapter.hash_file(target_path)
+                        if current_hash != file_metadata["hash"]:
+                            diagnostics.append(DoctorDiagnostic(
+                                severity="warning",
+                                component=component_name,
+                                message=f"File content drift: {target_path}",
+                                details={
+                                    "path": str(target_path),
+                                    "expected_hash": file_metadata["hash"],
+                                    "actual_hash": current_hash,
+                                },
+                                repairable=True,
+                            ))
 
         except Exception as e:
             diagnostics.append(DoctorDiagnostic(
@@ -227,8 +263,16 @@ class Doctor:
             for component in installed_components:
                 receipt = self.receipts_adapter.read_receipt(component)
                 if receipt:
-                    for file_action in receipt.files:
-                        tracked_files.add(file_action.target_path)
+                    # Handle both new domain format (list of FileAction) and adapter format (dict)
+                    if hasattr(receipt, 'files'):
+                        if isinstance(receipt.files, list):
+                            # Domain Receipt format - list of FileAction objects
+                            for file_action in receipt.files:
+                                tracked_files.add(file_action.target_path)
+                        elif isinstance(receipt.files, dict):
+                            # Adapter Receipt format - dict mapping paths to metadata
+                            for file_path in receipt.files.keys():
+                                tracked_files.add(self.target_dir / file_path)
 
             # Add files that SHOULD be tracked by manifest/plugin components
             if self.resolver:
@@ -423,19 +467,38 @@ class Doctor:
             True if receipt is valid
         """
         try:
-            # Check required fields
-            if not receipt.component_id:
-                return False
-            if not receipt.installed_at:
-                return False
-            if not hasattr(receipt, 'files'):
-                return False
-
-            # Validate file actions
-            for file_action in receipt.files:
-                if not hasattr(file_action, 'target_path'):
+            # Check required fields based on receipt type
+            if hasattr(receipt, 'component_id'):
+                # Domain Receipt format
+                if not receipt.component_id:
                     return False
-                if not hasattr(file_action, 'action_type'):
+                if not receipt.installed_at:
+                    return False
+                if not hasattr(receipt, 'files'):
+                    return False
+
+                # Validate file actions for domain format
+                if isinstance(receipt.files, list):
+                    for file_action in receipt.files:
+                        if not hasattr(file_action, 'target_path'):
+                            return False
+                        if not hasattr(file_action, 'action_type'):
+                            return False
+                elif isinstance(receipt.files, dict):
+                    # Files dict format is also valid
+                    pass
+                else:
+                    return False
+            else:
+                # Adapter Receipt format
+                if not hasattr(receipt, 'component_name') or not receipt.component_name:
+                    return False
+                if not hasattr(receipt, 'installed_at') or not receipt.installed_at:
+                    return False
+                if not hasattr(receipt, 'files'):
+                    return False
+                # For adapter format, files should be a dict
+                if not isinstance(receipt.files, dict):
                     return False
 
             return True
